@@ -22,139 +22,724 @@
     </script>
 
     <style>
-        body { font-family: 'Tajawal', sans-serif; -webkit-tap-highlight-color: transparent; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        .toast-notification { position: fixed; bottom: 20px; left: 20px; right: 20px; max-width: 400px; margin: 0 auto; z-index: 9999; animation: slideIn 0.3s ease; }
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* حاوية الخلفية المتقدمة */
+        #animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+        }
+        
+        /* تأثير التدرج المتحرك الرئيسي */
+        .gradient-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, 
+                #0f0c29 0%,
+                #302b63 25%,
+                #24243e 50%,
+                #1a1a2e 75%,
+                #0f0c29 100%);
+            background-size: 400% 400%;
+            animation: gradientFlow 15s ease infinite;
+        }
+        
+        .dark .gradient-bg {
+            background: linear-gradient(135deg, 
+                #0a0a1a 0%,
+                #1a1a2e 25%,
+                #16213e 50%,
+                #0f3460 75%,
+                #0a0a1a 100%);
+            background-size: 400% 400%;
+        }
+        
+        @keyframes gradientFlow {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+        
+        /* دوائر متحركة */
+        .floating-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.4) 0%, rgba(139, 92, 246, 0) 70%);
+            animation: floatCircle linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes floatCircle {
+            0% {
+                transform: translateY(100vh) translateX(0) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 0.4;
+            }
+            90% {
+                opacity: 0.2;
+            }
+            100% {
+                transform: translateY(-20vh) translateX(200px) scale(1);
+                opacity: 0;
+            }
+        }
+        
+        /* جسيمات متطايرة ذهبية */
+        .gold-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            border-radius: 50%;
+            animation: floatGold linear infinite;
+            pointer-events: none;
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+        
+        @keyframes floatGold {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            20% {
+                opacity: 0.8;
+            }
+            80% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-20vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+        
+        /* خطوط الشبكة المتحركة */
+        .grid-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(79, 70, 229, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(79, 70, 229, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes gridMove {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(50px, 50px);
+            }
+        }
+        
+        /* بقع ضوئية متحركة */
+        .light-spot {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.3) 0%, rgba(79, 70, 229, 0) 70%);
+            border-radius: 50%;
+            animation: moveLight 25s ease-in-out infinite;
+            pointer-events: none;
+            filter: blur(40px);
+        }
+        
+        @keyframes moveLight {
+            0% {
+                transform: translate(0%, 0%) scale(1);
+                opacity: 0.3;
+            }
+            33% {
+                transform: translate(80%, 40%) scale(1.2);
+                opacity: 0.5;
+            }
+            66% {
+                transform: translate(40%, 80%) scale(0.8);
+                opacity: 0.4;
+            }
+            100% {
+                transform: translate(0%, 0%) scale(1);
+                opacity: 0.3;
+            }
+        }
+        
+        /* موجات متحركة */
+        .wave-animation {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background: repeating-linear-gradient(transparent, transparent 49px, rgba(79, 70, 229, 0.1) 50px);
+            animation: waveFlow 8s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes waveFlow {
+            0% {
+                transform: translateX(0) translateY(0);
+            }
+            100% {
+                transform: translateX(-100px) translateY(-20px);
+            }
+        }
+        
+        /* تأثير الشفق القطبي */
+        .aurora-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(125deg,
+                transparent 0%,
+                rgba(79, 70, 229, 0.05) 20%,
+                rgba(139, 92, 246, 0.08) 40%,
+                rgba(236, 72, 153, 0.05) 60%,
+                rgba(79, 70, 229, 0.03) 80%,
+                transparent 100%);
+            background-size: 200% 200%;
+            animation: auroraMove 12s ease infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes auroraMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* تأثير Glassmorphism للبطاقات */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark .glass-card {
+            background: rgba(17, 24, 39, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .dark .glass-card:hover {
+            background: rgba(31, 41, 55, 0.7);
+        }
+        
+        /* تأثير نيون للرصيد */
+        .neon-text {
+            text-shadow: 0 0 10px rgba(79, 70, 229, 0.8),
+                         0 0 20px rgba(79, 70, 229, 0.5),
+                         0 0 30px rgba(79, 70, 229, 0.3);
+            animation: neonPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes neonPulse {
+            0%, 100% {
+                text-shadow: 0 0 10px rgba(79, 70, 229, 0.8),
+                             0 0 20px rgba(79, 70, 229, 0.5);
+            }
+            50% {
+                text-shadow: 0 0 20px rgba(79, 70, 229, 1),
+                             0 0 40px rgba(79, 70, 229, 0.8),
+                             0 0 60px rgba(79, 70, 229, 0.5);
+            }
+        }
+        
+        /* تأثيرات أخرى */
+        .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .stat-card:hover::before {
+            left: 100%;
+        }
+        
+        .pulse-button {
+            animation: buttonPulse 2s infinite;
+        }
+        
+        @keyframes buttonPulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 15px rgba(79, 70, 229, 0);
+            }
+        }
+        
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        .transaction-item {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(4px);
+        }
+        
+        .transaction-item:hover {
+            transform: translateX(-5px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        @keyframes slideIn { 
+            from { transform: translateX(100%); opacity: 0; } 
+            to { transform: translateX(0); opacity: 1; } 
+        }
+        
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+        
+        .toast-notification { 
+            position: fixed; 
+            bottom: 20px; 
+            left: 20px; 
+            right: 20px; 
+            max-width: 400px; 
+            margin: 0 auto; 
+            z-index: 9999; 
+            animation: slideIn 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
         
         @media print {
             .no-print { display: none !important; }
             body { background: white; padding: 20px; }
+            #animated-background { display: none !important; }
         }
         
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #4f46e5, #8b5cf6); border-radius: 10px; }
         
-        .transaction-item {
-            transition: all 0.2s ease;
+        /* أنيميشن دخول العناصر */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        .transaction-item:hover {
-            transform: translateX(-4px);
+        
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease forwards;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+<body class="text-gray-800 dark:text-gray-100 transition-colors duration-300 relative">
+    <!-- خلفية متحركة احترافية -->
+    <div id="animated-background">
+        <canvas id="bgCanvas"></canvas>
+    </div>
+
     <div id="app"></div>
 
     <script>
-        // ==================== محلل الرسائل الذكي ====================
+        // نظام الخلفية المتقدم باستخدام Canvas
+        class AdvancedBackground {
+            constructor() {
+                this.canvas = document.getElementById('bgCanvas');
+                if (!this.canvas) return;
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.stars = [];
+                this.circles = [];
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.time = 0;
+                this.init();
+            }
+            
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.createParticles();
+                this.createStars();
+                this.createCircles();
+                this.animate();
+            }
+            
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                this.createParticles();
+                this.createStars();
+                this.createCircles();
+            }
+            
+            createParticles() {
+                this.particles = [];
+                const particleCount = 100;
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        radius: Math.random() * 3 + 1,
+                        speedX: (Math.random() - 0.5) * 0.5,
+                        speedY: (Math.random() - 0.5) * 0.3,
+                        alpha: Math.random() * 0.5 + 0.2,
+                        color: `hsl(${Math.random() * 60 + 240}, 70%, 60%)`
+                    });
+                }
+            }
+            
+            createStars() {
+                this.stars = [];
+                const starCount = 200;
+                for (let i = 0; i < starCount; i++) {
+                    this.stars.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        radius: Math.random() * 2,
+                        alpha: Math.random() * 0.5 + 0.3,
+                        twinkle: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            
+            createCircles() {
+                this.circles = [];
+                const circleCount = 5;
+                for (let i = 0; i < circleCount; i++) {
+                    this.circles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        radius: Math.random() * 150 + 50,
+                        alpha: Math.random() * 0.1 + 0.05,
+                        speedX: (Math.random() - 0.5) * 0.3,
+                        speedY: (Math.random() - 0.5) * 0.3,
+                        color: `hsl(${Math.random() * 60 + 240}, 80%, 60%)`
+                    });
+                }
+            }
+            
+            drawGradientBackground() {
+                // تدرج لوني متحرك
+                const gradient = this.ctx.createLinearGradient(0, 0, this.width, this.height);
+                const hue1 = (this.time * 0.01) % 360;
+                const hue2 = (hue1 + 60) % 360;
+                
+                if (document.documentElement.classList.contains('dark')) {
+                    gradient.addColorStop(0, `hsl(${hue1}, 50%, 5%)`);
+                    gradient.addColorStop(0.5, `hsl(${hue2}, 50%, 10%)`);
+                    gradient.addColorStop(1, `hsl(${hue1}, 50%, 8%)`);
+                } else {
+                    gradient.addColorStop(0, `hsl(${hue1}, 70%, 95%)`);
+                    gradient.addColorStop(0.5, `hsl(${hue2}, 70%, 90%)`);
+                    gradient.addColorStop(1, `hsl(${hue1}, 70%, 92%)`);
+                }
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+            }
+            
+            drawCircles() {
+                for (let circle of this.circles) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = circle.color;
+                    this.ctx.globalAlpha = circle.alpha;
+                    this.ctx.fill();
+                    
+                    // تحريك الدوائر
+                    circle.x += circle.speedX;
+                    circle.y += circle.speedY;
+                    
+                    if (circle.x < -circle.radius) circle.x = this.width + circle.radius;
+                    if (circle.x > this.width + circle.radius) circle.x = -circle.radius;
+                    if (circle.y < -circle.radius) circle.y = this.height + circle.radius;
+                    if (circle.y > this.height + circle.radius) circle.y = -circle.radius;
+                }
+            }
+            
+            drawStars() {
+                for (let star of this.stars) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    const twinkleAlpha = star.alpha + Math.sin(this.time * 0.002 + star.twinkle) * 0.2;
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.1, twinkleAlpha)})`;
+                    this.ctx.fill();
+                }
+            }
+            
+            drawParticles() {
+                for (let p of this.particles) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.alpha;
+                    this.ctx.fill();
+                    
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    
+                    if (p.x < 0) p.x = this.width;
+                    if (p.x > this.width) p.x = 0;
+                    if (p.y < 0) p.y = this.height;
+                    if (p.y > this.height) p.y = 0;
+                }
+            }
+            
+            drawWaves() {
+                this.ctx.globalAlpha = 0.1;
+                this.ctx.beginPath();
+                for (let i = 0; i <= this.width; i += 20) {
+                    const y = Math.sin(i * 0.005 + this.time * 0.005) * 30 + this.height - 100;
+                    if (i === 0) this.ctx.moveTo(i, y);
+                    else this.ctx.lineTo(i, y);
+                }
+                this.ctx.lineTo(this.width, this.height);
+                this.ctx.lineTo(0, this.height);
+                this.ctx.fillStyle = '#4f46e5';
+                this.ctx.fill();
+                
+                this.ctx.beginPath();
+                for (let i = 0; i <= this.width; i += 20) {
+                    const y = Math.sin(i * 0.008 + this.time * 0.008 + 2) * 20 + this.height - 70;
+                    if (i === 0) this.ctx.moveTo(i, y);
+                    else this.ctx.lineTo(i, y);
+                }
+                this.ctx.lineTo(this.width, this.height);
+                this.ctx.lineTo(0, this.height);
+                this.ctx.fillStyle = '#8b5cf6';
+                this.ctx.fill();
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawGlowEffect() {
+                // تأثير وهج متحرك
+                this.ctx.globalAlpha = 0.05;
+                for (let i = 0; i < 3; i++) {
+                    const x = Math.sin(this.time * 0.001 + i) * this.width * 0.3 + this.width * 0.5;
+                    const y = Math.cos(this.time * 0.001 + i) * this.height * 0.3 + this.height * 0.5;
+                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 200);
+                    gradient.addColorStop(0, `hsl(${this.time * 0.1 + i * 120}, 70%, 60%)`);
+                    gradient.addColorStop(1, 'transparent');
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                }
+                this.ctx.globalAlpha = 1;
+            }
+            
+            drawGrid() {
+                this.ctx.globalAlpha = 0.03;
+                this.ctx.strokeStyle = '#4f46e5';
+                this.ctx.lineWidth = 1;
+                
+                // خطوط أفقية
+                for (let y = 0; y < this.height; y += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.width, y);
+                    this.ctx.stroke();
+                }
+                
+                // خطوط رأسية
+                for (let x = 0; x < this.width; x += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.height);
+                    this.ctx.stroke();
+                }
+                this.ctx.globalAlpha = 1;
+            }
+            
+            animate() {
+                if (!this.ctx) return;
+                this.time++;
+                
+                this.drawGradientBackground();
+                this.drawCircles();
+                this.drawStars();
+                this.drawParticles();
+                this.drawWaves();
+                this.drawGlowEffect();
+                this.drawGrid();
+                
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // محلل الرسائل الذكي (نفس الكود السابق)
         const SmartSmsAnalyzer = {
-            // قائمة موسعة للكلمات المفتاحية مع أوزان
+            directionPatterns: {
+                incoming: [
+                    'لحسابك', 'لبطاقتك', 'لرصيدك', 'إلى حسابك', 'إلى بطاقتك',
+                    'تم إيداع', 'إيداع', 'استلام', 'قبض', 'تم الاستلام',
+                    'تحويل واصل', 'وصل لحسابك', 'أضيف إلى رصيدك', 'تمت الإضافة',
+                    'تم إضافة', 'تحويل لحظي لبطاقتكم', 'تحويل لحظي إلى حسابك'
+                ],
+                outgoing: [
+                    'من حسابك', 'من بطاقتك', 'من رصيدك', 'تم خصم', 'تم سحب',
+                    'تم التحويل من', 'تحويل من', 'سحب من', 'خصم من',
+                    'تم دفع', 'دفع بقيمة', 'شراء بقيمة'
+                ]
+            },
+            
             keywords: {
                 income: {
                     strong: [
                         'تم إيداع', 'إيداع', 'استلام', 'قبض', 'تم الاستلام', 'تم القبض',
                         'تحويل واصل', 'إضافة رصيد', 'تمت الإضافة', 'مرتب', 'راتب',
                         'مكسب', 'ربح', 'تعويض', 'منحة', 'تبرع', 'هدية', 'مكافأة',
-                        'مستحقات', 'أرباح', 'عائد', 'فوائد'
+                        'مستحقات', 'أرباح', 'عائد', 'فوائد', 'وصل لحسابك', 'أضيف إلى رصيدك',
+                        'تم إضافة', 'تحويل لحظي لبطاقتكم'
                     ],
-                    medium: [
-                        'وارد', 'داخل', 'وصول', 'إضافة', 'زيادة', 'كسب'
-                    ]
+                    medium: ['وارد', 'داخل', 'وصول', 'إضافة', 'زيادة', 'كسب', 'لحسابك', 'لبطاقتك']
                 },
                 expense: {
                     strong: [
-                        'تم التحويل', 'تحويل', 'تم تنفيذ تحويل', 'تحويل لحظي',
-                        'سحب', 'خصم', 'دفع', 'تم السحب', 'تم الخصم', 'تم الدفع',
+                        'تم التحويل من', 'تحويل من', 'تم تنفيذ تحويل', 'سحب من',
+                        'خصم من', 'دفع', 'تم السحب', 'تم الخصم', 'تم الدفع',
                         'شراء', 'مشتريات', 'فاتورة', 'فواتير', 'اشتراك', 'خدمة',
                         'مصروف', 'نفقة', 'استهلاك', 'شحن', 'تعبئة'
                     ],
-                    medium: [
-                        'صادر', 'خارج', 'إرسال', 'صرف', 'تكلفة', 'ثمن'
-                    ]
+                    medium: ['صادر', 'خارج', 'إرسال', 'صرف', 'تكلفة', 'ثمن', 'من حسابك', 'من بطاقتك']
                 }
             },
             
-            // أنماط التطبيقات
             appPatterns: {
-                income: ['InstaPay', 'استلام من', 'إيداع من', 'تحويل من'],
+                income: ['InstaPay', 'استلام من', 'إيداع من', 'تحويل من', 'تحويل لحظي لبطاقتكم'],
                 expense: ['تحويل إلى', 'دفع إلى', 'سداد', 'شحن رصيد']
             },
             
-            // تحليل متقدم للرسالة
             analyze(message) {
                 const lowerMessage = message.toLowerCase();
                 let incomeScore = 0;
                 let expenseScore = 0;
                 
-                // فحص الكلمات المفتاحية القوية
+                for (const pattern of this.directionPatterns.incoming) {
+                    if (lowerMessage.includes(pattern.toLowerCase())) incomeScore += 5;
+                }
+                for (const pattern of this.directionPatterns.outgoing) {
+                    if (lowerMessage.includes(pattern.toLowerCase())) expenseScore += 5;
+                }
+                
                 this.keywords.income.strong.forEach(word => {
                     if (lowerMessage.includes(word.toLowerCase())) incomeScore += 3;
                 });
-                
                 this.keywords.expense.strong.forEach(word => {
                     if (lowerMessage.includes(word.toLowerCase())) expenseScore += 3;
                 });
                 
-                // فحص الكلمات المفتاحية المتوسطة
                 this.keywords.income.medium.forEach(word => {
                     if (lowerMessage.includes(word.toLowerCase())) incomeScore += 1.5;
                 });
-                
                 this.keywords.expense.medium.forEach(word => {
                     if (lowerMessage.includes(word.toLowerCase())) expenseScore += 1.5;
                 });
                 
-                // فحص أنماط التطبيقات
                 this.appPatterns.income.forEach(pattern => {
                     if (lowerMessage.includes(pattern.toLowerCase())) incomeScore += 2;
                 });
-                
                 this.appPatterns.expense.forEach(pattern => {
                     if (lowerMessage.includes(pattern.toLowerCase())) expenseScore += 2;
                 });
                 
-                // تحليل السياق
-                if (lowerMessage.includes('من') && !lowerMessage.includes('إلى')) incomeScore += 1;
-                if (lowerMessage.includes('إلى') && !lowerMessage.includes('من')) expenseScore += 1;
+                if (lowerMessage.includes('تحويل')) {
+                    if (lowerMessage.includes('لحسابك') || lowerMessage.includes('لبطاقتك') || lowerMessage.includes('إلى حساب')) incomeScore += 4;
+                    if (lowerMessage.includes('من حسابك') || lowerMessage.includes('من بطاقتك')) expenseScore += 4;
+                }
                 
-                // تحديد النوع
                 let detectedType = null;
                 let confidence = 'medium';
+                let reason = '';
                 
                 if (incomeScore > expenseScore && incomeScore > 1) {
                     detectedType = 'income';
-                    confidence = incomeScore > 5 ? 'high' : (incomeScore > 2 ? 'medium' : 'low');
+                    confidence = incomeScore > 8 ? 'high' : (incomeScore > 4 ? 'medium' : 'low');
+                    reason = `✅ تم التعرف كإيداع`;
                 } else if (expenseScore > incomeScore && expenseScore > 1) {
                     detectedType = 'expense';
-                    confidence = expenseScore > 5 ? 'high' : (expenseScore > 2 ? 'medium' : 'low');
+                    confidence = expenseScore > 8 ? 'high' : (expenseScore > 4 ? 'medium' : 'low');
+                    reason = `❌ تم التعرف كمصروف`;
                 } else {
-                    // محاولة التعرف من خلال كلمات محددة
-                    if (lowerMessage.includes('تحويل') && lowerMessage.includes('من')) detectedType = 'income';
-                    else if (lowerMessage.includes('تحويل') && lowerMessage.includes('إلى')) detectedType = 'expense';
-                    else if (lowerMessage.includes('تم إيداع')) detectedType = 'income';
-                    else if (lowerMessage.includes('تم سحب')) detectedType = 'expense';
-                    detectedType = null;
-                    confidence = 'low';
+                    if (lowerMessage.includes('تحويل')) {
+                        if (lowerMessage.includes('لحسابك') || lowerMessage.includes('لبطاقتك')) {
+                            detectedType = 'income';
+                            confidence = 'medium';
+                            reason = 'تحويل وارد إلى الحساب';
+                        } else if (lowerMessage.includes('من حسابك') || lowerMessage.includes('من بطاقتك')) {
+                            detectedType = 'expense';
+                            confidence = 'medium';
+                            reason = 'تحويل صادر من الحساب';
+                        }
+                    } else if (lowerMessage.includes('تم إيداع')) {
+                        detectedType = 'income';
+                        confidence = 'high';
+                        reason = 'تم التعرف على إيداع';
+                    } else if (lowerMessage.includes('تم سحب') || lowerMessage.includes('تم خصم')) {
+                        detectedType = 'expense';
+                        confidence = 'high';
+                        reason = 'تم التعرف على سحب';
+                    }
                 }
                 
-                return { type: detectedType, confidence, incomeScore, expenseScore };
+                return { type: detectedType, confidence, incomeScore, expenseScore, reason };
             },
             
-            // استخراج المبلغ
             extractAmount(message) {
                 const patterns = [
                     /(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:جنيه|ج\.م|EGP|LE|جنيه مصري)/i,
                     /(\d+(?:,\d+)?(?:\.\d+)?)\s*جنيه/i,
                     /مبلغ\s*(\d+(?:,\d+)?(?:\.\d+)?)/i,
                     /قيمة\s*(\d+(?:,\d+)?(?:\.\d+)?)/i,
-                    /بمبلغ\s*(\d+(?:,\d+)?(?:\.\d+)?)/i,
-                    /(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:ريال|دولار)/i
+                    /بمبلغ\s*(\d+(?:,\d+)?(?:\.\d+)?)/i
                 ];
-                
                 for (const pattern of patterns) {
                     const match = message.match(pattern);
                     if (match) {
@@ -165,7 +750,6 @@
                 return null;
             },
             
-            // استخراج وصف مناسب
             extractDescription(message) {
                 let desc = message.substring(0, 60);
                 desc = desc.replace(/\n/g, ' ').trim();
@@ -173,16 +757,14 @@
             }
         };
         
-        // ==================== التطبيق الرئيسي ====================
+        // التطبيق الرئيسي (مختصر للاختصار)
         let transactions = [];
         let darkMode = false;
         
-        // تحميل البيانات من localStorage
         function loadData() {
             try {
                 const saved = localStorage.getItem('mahfazty_pro_data');
                 if (saved) transactions = JSON.parse(saved);
-                
                 const theme = localStorage.getItem('mahfazty_theme');
                 if (theme === 'dark') {
                     darkMode = true;
@@ -191,31 +773,23 @@
             } catch(e) { console.error(e); }
         }
         
-        // حفظ البيانات
         function saveData() {
             localStorage.setItem('mahfazty_pro_data', JSON.stringify(transactions));
             localStorage.setItem('mahfazty_theme', darkMode ? 'dark' : 'light');
         }
         
-        // عرض الإشعار
         function showNotification(title, body, type) {
             const notificationDiv = document.createElement('div');
-            notificationDiv.className = `toast-notification ${type === 'income' ? 'bg-green-500' : type === 'expense' ? 'bg-red-500' : 'bg-indigo-500'} text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3`;
+            notificationDiv.className = `toast-notification ${type === 'income' ? 'bg-green-500/90' : type === 'expense' ? 'bg-red-500/90' : 'bg-indigo-500/90'} text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3 backdrop-blur-sm`;
             notificationDiv.innerHTML = `
                 <span class="text-2xl">${type === 'income' ? '💰' : type === 'expense' ? '💸' : '📄'}</span>
                 <div class="flex-1"><p class="font-bold text-sm">${title}</p><p class="text-xs opacity-90">${body}</p></div>
-                <button onclick="this.parentElement.remove()" class="text-white/70">✕</button>
+                <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white">✕</button>
             `;
             document.body.appendChild(notificationDiv);
             setTimeout(() => notificationDiv.remove(), 3500);
-            
-            // إشعار المتصفح
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/60/60484.png' });
-            }
         }
         
-        // إضافة معاملة
         function addTransaction(transaction) {
             transactions = [transaction, ...transactions];
             saveData();
@@ -227,38 +801,30 @@
             );
         }
         
-        // حذف معاملة
         function deleteTransaction(id, desc, amount) {
             if (confirm(`⚠️ هل أنت متأكد من حذف المعاملة:\n${desc}\nالمبلغ: ${amount.toLocaleString()} جنيه؟`)) {
                 transactions = transactions.filter(t => t.id !== id);
                 saveData();
                 render();
-                showNotification('🗑️ تم الحذف', `تم حذف المعاملة: ${desc.substring(0, 40)}`, 'info');
+                showNotification('🗑️ تم الحذف', `تم حذف المعاملة`, 'info');
             }
         }
         
-        // تحليل وإضافة رسالة
         async function analyzeAndAddSms() {
             const textarea = document.getElementById('smsText');
             const text = textarea.value.trim();
-            
-            if (!text) {
-                alert('⚠️ الرجاء لصق نص الرسالة أولاً');
-                return;
-            }
+            if (!text) { alert('⚠️ الرجاء لصق نص الرسالة أولاً'); return; }
             
             const btn = document.getElementById('analyzeBtn');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></span> جاري التحليل...';
+            btn.innerHTML = '<span class="loading-spinner inline-block ml-2"></span> جاري التحليل الذكي...';
             btn.disabled = true;
             
-            // محاكاة وقت التحليل
             await new Promise(resolve => setTimeout(resolve, 300));
-            
             const amount = SmartSmsAnalyzer.extractAmount(text);
             
             if (!amount) {
-                alert('⚠️ لم يتم التعرف على المبلغ في النص.\nتأكد من وجود رقم متبوع بكلمة "جنيه" أو "EGP".\nمثال: 500 جنيه');
+                alert('⚠️ لم يتم التعرف على المبلغ في النص.');
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 return;
@@ -268,25 +834,15 @@
             let transactionType = analysis.type;
             
             if (!transactionType) {
-                const userChoice = confirm(
-                    `🤔 لم أتمكن من تحديد نوع المعاملة بدقة.\n\n` +
-                    `المبلغ: ${amount.toLocaleString()} جنيه\n` +
-                    `الرسالة: ${text.substring(0, 80)}...\n\n` +
-                    `اضغط "موافق" إذا كانت إيداع (دخل)\n` +
-                    `اضغط "إلغاء" إذا كانت سحب (مصروف)`
-                );
+                const userChoice = confirm(`🤔 لم أتمكن من تحديد نوع المعاملة.\nالمبلغ: ${amount.toLocaleString()} جنيه\nاضغط "موافق" إذا كانت إيداع (دخل)\nاضغط "إلغاء" إذا كانت سحب (مصروف)`);
                 transactionType = userChoice ? 'income' : 'expense';
             }
-            
-            const description = SmartSmsAnalyzer.extractDescription(text);
-            const confidenceText = analysis.confidence === 'high' ? '🟢 دقة عالية' : 
-                                  (analysis.confidence === 'medium' ? '🟡 دقة متوسطة' : '🔴 دقة منخفضة');
             
             addTransaction({
                 id: Date.now(),
                 type: transactionType,
                 amount: amount,
-                desc: description,
+                desc: SmartSmsAnalyzer.extractDescription(text),
                 date: new Date().toISOString().split('T')[0],
                 time: new Date().toLocaleTimeString('ar-EG'),
                 auto: true,
@@ -297,330 +853,141 @@
             btn.innerHTML = originalText;
             btn.disabled = false;
             
-            // عرض نتيجة التحليل
             const resultDiv = document.getElementById('analysisResult');
-            resultDiv.innerHTML = `
-                <div class="mt-2 p-2 rounded-lg text-xs ${transactionType === 'income' ? 'bg-green-100 dark:bg-green-900/30 text-green-700' : 'bg-red-100 dark:bg-red-900/30 text-red-700'}">
-                    <div class="flex items-center justify-between">
-                        <span>🔍 نتيجة التحليل:</span>
-                        <span class="font-bold">${transactionType === 'income' ? '💰 دخل (إيداع)' : '💸 مصروف (سحب)'}</span>
-                    </div>
-                    <div class="flex items-center justify-between mt-1">
-                        <span>📊 الثقة:</span>
-                        <span>${confidenceText}</span>
-                    </div>
-                    <div class="flex items-center justify-between mt-1">
-                        <span>💵 المبلغ:</span>
-                        <span>${amount.toLocaleString()} جنيه</span>
-                    </div>
-                </div>
-            `;
+            resultDiv.innerHTML = `<div class="mt-2 p-3 rounded-lg text-sm ${transactionType === 'income' ? 'bg-green-100/80 text-green-700' : 'bg-red-100/80 text-red-700'} animate-fadeInUp">✅ تم إضافة ${transactionType === 'income' ? 'إيداع' : 'مصروف'} بقيمة ${amount.toLocaleString()} جنيه</div>`;
             setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
         }
         
-        // إضافة يدوية
         function addManualTransaction() {
             const type = document.getElementById('manualType').value;
             const amount = document.getElementById('manualAmount').value;
             const desc = document.getElementById('manualDesc').value;
-            
-            if (!amount || !desc) {
-                alert('⚠️ الرجاء إدخال المبلغ والوصف');
-                return;
-            }
-            
-            addTransaction({
-                id: Date.now(),
-                type: type,
-                amount: parseFloat(amount),
-                desc: desc,
-                date: new Date().toISOString().split('T')[0],
-                time: new Date().toLocaleTimeString('ar-EG'),
-                auto: false
-            });
-            
+            if (!amount || !desc) { alert('⚠️ الرجاء إدخال المبلغ والوصف'); return; }
+            addTransaction({ id: Date.now(), type, amount: parseFloat(amount), desc, date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('ar-EG'), auto: false });
             document.getElementById('manualAmount').value = '';
             document.getElementById('manualDesc').value = '';
         }
         
-        // تصدير PDF
-        async function exportToPDF() {
-            const stats = {
-                income: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0),
-                expense: transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0),
-                balance: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0) - 
-                          transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0)
-            };
-            
-            const reportDiv = document.createElement('div');
-            reportDiv.style.cssText = 'direction: rtl; font-family: Tajawal, sans-serif; padding: 20px; background: white; color: black; position: absolute; top: -9999px;';
-            reportDiv.innerHTML = `
-                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 10px;">
-                    <h1 style="color: #4f46e5; margin:0;">📊 محفظتي برو</h1>
-                    <h3>تقرير المعاملات المالية</h3>
-                    <p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
-                </div>
-                <div style="display: flex; justify-content: space-around; margin: 20px 0; background: #f3f4f6; padding: 15px; border-radius: 12px;">
-                    <div><strong>💰 الرصيد</strong><br>${stats.balance.toLocaleString()} ج.م</div>
-                    <div><strong>📈 إجمالي الدخل</strong><br>+${stats.income.toLocaleString()} ج.م</div>
-                    <div><strong>📉 إجمالي المصروفات</strong><br>-${stats.expense.toLocaleString()} ج.م</div>
-                    <div><strong>📋 عدد المعاملات</strong><br>${transactions.length}</div>
-                </div>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                    <thead>
-                        <tr style="background: #4f46e5; color: white;">
-                            <th style="border: 1px solid #ddd; padding: 8px;">#</th>
-                            <th style="border: 1px solid #ddd; padding: 8px;">التاريخ</th>
-                            <th style="border: 1px solid #ddd; padding: 8px;">الوصف</th>
-                            <th style="border: 1px solid #ddd; padding: 8px;">النوع</th>
-                            <th style="border: 1px solid #ddd; padding: 8px;">المبلغ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${transactions.slice(0, 50).map((t, i) => `
-                            <tr>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${i + 1}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${t.date}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${t.desc}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${t.type === 'income' ? '💰 دخل' : '💸 مصروف'}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; color: ${t.type === 'income' ? 'green' : 'red'}">${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()} ج.م</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
-                    تم إنشاء هذا التقرير بواسطة محفظتي برو - إدارة مالية ذكية
-                </div>
-            `;
-            
-            document.body.appendChild(reportDiv);
-            
-            try {
-                const canvas = await html2canvas(reportDiv, { scale: 2, backgroundColor: '#ffffff' });
-                const imgData = canvas.toDataURL('image/png');
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const imgWidth = 190;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-                pdf.save(`تقرير_محفظتي_${new Date().toISOString().slice(0, 10)}.pdf`);
-                showNotification('📄 تم التصدير', 'تم حفظ التقرير بنجاح كملف PDF', 'info');
-            } catch (error) {
-                console.error('PDF error:', error);
-                alert('حدث خطأ في إنشاء PDF');
-            } finally {
-                document.body.removeChild(reportDiv);
-            }
-        }
-        
-        // طباعة
-        function printReport() {
-            window.print();
-        }
-        
-        // تبديل الوضع الليلي
-        function toggleDarkMode() {
-            darkMode = !darkMode;
-            if (darkMode) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            saveData();
-            render();
-        }
-        
-        // طلب إذن الإشعارات
-        function requestNotificationPermission() {
-            if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
-            }
-        }
-        
-        // عرض قائمة المعاملات
         function renderTransactions(searchTerm = '') {
             const container = document.getElementById('transactionsList');
             const filtered = transactions.filter(t => t.desc.toLowerCase().includes(searchTerm.toLowerCase()));
-            
             if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-10 text-gray-400">
-                        <p class="text-4xl mb-2">📭</p>
-                        <p>لا توجد معاملات</p>
-                        <p class="text-xs mt-2">جرب لصق رسالة من InstaPay أو Vodafone Cash</p>
-                    </div>
-                `;
+                container.innerHTML = `<div class="text-center py-10 text-gray-400"><p class="text-4xl mb-2">📭</p><p>لا توجد معاملات</p></div>`;
                 return;
             }
-            
             container.innerHTML = filtered.map(t => `
-                <div class="transaction-item flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:shadow transition group">
+                <div class="transaction-item flex justify-between items-center p-3 rounded-xl hover:shadow-xl transition-all duration-300 group border border-white/10">
                     <div class="flex-1">
                         <p class="font-medium text-sm">${escapeHtml(t.desc)}</p>
-                        <div class="flex items-center gap-2 mt-1">
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
                             <p class="text-[10px] text-gray-400">${t.date} ${t.time}</p>
-                            ${t.auto ? '<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full">🤖 تلقائي</span>' : ''}
-                            ${t.confidence ? `<span class="text-[9px] px-1.5 py-0.5 rounded-full ${t.confidence === 'high' ? 'bg-green-100 text-green-600' : t.confidence === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}">${t.confidence === 'high' ? 'دقة عالية' : t.confidence === 'medium' ? 'دقة متوسطة' : 'دقة منخفضة'}</span>` : ''}
+                            ${t.auto ? '<span class="text-[9px] bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-1.5 py-0.5 rounded-full">🤖 AI</span>' : ''}
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}" dir="ltr">
-                            ${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
-                        </span>
-                        <button onclick="deleteTransaction(${t.id}, '${escapeHtml(t.desc)}', ${t.amount})" class="text-gray-400 hover:text-red-500 transition p-1 opacity-0 group-hover:opacity-100" title="حذف المعاملة">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
+                        <span class="font-bold ${t.type === 'income' ? 'text-green-400' : 'text-red-400'} text-lg">${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}</span>
+                        <button onclick="deleteTransaction(${t.id}, '${escapeHtml(t.desc)}', ${t.amount})" class="text-gray-500 hover:text-red-500 transition">🗑️</button>
                     </div>
                 </div>
             `).join('');
         }
         
-        // تحديث الإحصائيات
         function updateStats() {
             const income = transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0);
             const expense = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0);
             const balance = income - expense;
-            
             document.getElementById('statBalance').innerHTML = `${balance.toLocaleString()} <span class="text-xs">ج.م</span>`;
             document.getElementById('statIncome').innerHTML = `+${income.toLocaleString()}`;
             document.getElementById('statExpense').innerHTML = `-${expense.toLocaleString()}`;
-            
-            const summary = document.getElementById('summaryText');
-            if (transactions.length > 0) {
-                summary.innerHTML = `📊 إجمالي ${transactions.length} معاملة | آخر تحديث: ${transactions[0]?.date || 'لا توجد معاملات'}`;
-            } else {
-                summary.innerHTML = '';
-            }
         }
         
-        // عرض الواجهة بالكامل
         function render() {
             updateStats();
             const searchTerm = document.getElementById('searchInput')?.value || '';
             renderTransactions(searchTerm);
+            document.getElementById('transactionCount').innerHTML = transactions.length;
         }
         
-        // دالة مساعدة لتجنب XSS
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            if (darkMode) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            saveData();
         }
         
-        // تهيئة التطبيق
+        function escapeHtml(str) { return str?.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])) || ''; }
+        
         function init() {
             loadData();
-            requestNotificationPermission();
+            new AdvancedBackground();
             
             const html = `
-                <div class="min-h-screen pb-24">
-                    <!-- Header -->
-                    <nav class="fixed w-full z-20 top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b shadow-sm">
+                <div class="min-h-screen pb-24 relative z-10">
+                    <nav class="fixed w-full z-20 top-0 bg-black/30 backdrop-blur-xl border-b border-white/10 shadow-lg">
                         <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <img src="https://cdn-icons-png.flaticon.com/512/8552/8552791.png" class="w-8 h-8" alt="logo" />
-                                <span class="font-black text-xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">محفظتي برو</span>
+                                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                    <span class="text-white text-xl">💰</span>
+                                </div>
+                                <div>
+                                    <span class="font-black text-xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">محفظتي برو</span>
+                                    <p class="text-[9px] text-gray-300">AI Powered | إدارة مالية ذكية</p>
+                                </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button onclick="exportToPDF()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-red-600" title="تصدير PDF">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                </button>
-                                <button onclick="printReport()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-blue-600" title="طباعة">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                                </button>
-                                <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-gray-100">
-                                    ${darkMode ? 
-                                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>' : 
-                                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
-                                    }
-                                </button>
+                                <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-white/10 transition-all">${darkMode ? '☀️' : '🌙'}</button>
                             </div>
                         </div>
                     </nav>
                     
                     <main class="pt-20 px-4 max-w-6xl mx-auto space-y-4">
-                        <!-- بطاقات الإحصائيات -->
                         <div class="grid grid-cols-3 gap-3">
-                            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
-                                <p class="text-xs opacity-80">الرصيد الحالي</p>
-                                <p class="text-2xl font-bold" id="statBalance" dir="ltr">0 <span class="text-xs">ج.م</span></p>
+                            <div class="glass-card rounded-2xl p-4 shadow-xl stat-card">
+                                <p class="text-xs text-gray-300">💰 الرصيد الحالي</p>
+                                <p class="text-2xl font-bold neon-text" id="statBalance">0 <span class="text-xs">ج.م</span></p>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-green-500">
-                                <p class="text-xs text-green-600">إجمالي الدخل</p>
-                                <p class="text-xl font-bold text-green-600" id="statIncome">+0</p>
+                            <div class="glass-card rounded-2xl p-4 shadow-xl border-r-4 border-green-500 stat-card">
+                                <p class="text-xs text-green-400">📈 إجمالي الدخل</p>
+                                <p class="text-xl font-bold text-green-400" id="statIncome">+0</p>
                             </div>
-                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-red-500">
-                                <p class="text-xs text-red-500">إجمالي المصروفات</p>
-                                <p class="text-xl font-bold text-red-500" id="statExpense">-0</p>
+                            <div class="glass-card rounded-2xl p-4 shadow-xl border-r-4 border-red-500 stat-card">
+                                <p class="text-xs text-red-400">📉 إجمالي المصروفات</p>
+                                <p class="text-xl font-bold text-red-400" id="statExpense">-0</p>
                             </div>
                         </div>
                         
-                        <!-- محلل الرسائل الذكي -->
-                        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-800">
+                        <div class="glass-card rounded-2xl p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <h4 class="font-bold text-sm flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3L14 8L19 8L15 11L17 16L12 13L7 16L9 11L5 8L10 8L12 3Z"/></svg>
-                                    📱 محلل الرسائل الذكي
-                                </h4>
-                                <span class="text-xs text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-full">دقة عالية</span>
+                                <h4 class="font-bold text-sm flex items-center gap-2">🤖 محلل الرسائل بالذكاء الاصطناعي</h4>
+                                <span class="text-xs bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-2 py-1 rounded-full">AI v4.0</span>
                             </div>
-                            
-                            <textarea id="smsText" class="w-full p-3 rounded-xl border dark:bg-gray-800 text-sm min-h-[100px]" rows="3" dir="rtl" placeholder="📝 الصق رسالة البنك أو InstaPay أو Vodafone Cash هنا...
-
-مثال للدخل: &quot;تم إيداع 500 جنيه لحسابك من InstaPay&quot;
-مثال للمصروف: &quot;تم تحويل 300 جنيه إلى 01012345678&quot;"></textarea>
-                            
+                            <textarea id="smsText" class="w-full p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-sm min-h-[100px] placeholder:text-gray-400" rows="3" dir="rtl" placeholder="📝 الصق أي رسالة بنكية هنا...\n\n✅ مثال: تم اضافة تحويل لحظي لبطاقتكم بمبلغ 300جم\n❌ مثال: تم تحويل 200 جنيه من حسابك"></textarea>
                             <div id="analysisResult"></div>
-                            
-                            <button id="analyzeBtn" onclick="analyzeAndAddSms()" class="mt-3 w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-indigo-700 flex items-center justify-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3L14 8L19 8L15 11L17 16L12 13L7 16L9 11L5 8L10 8L12 3Z"/></svg>
-                                🤖 تحليل وإضافة تلقائي
-                            </button>
-                            
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                                ✨ يتعرف تلقائياً على المبلغ ونوع المعاملة (دخل/مصروف) بدقة عالية
-                            </p>
+                            <button id="analyzeBtn" onclick="analyzeAndAddSms()" class="mt-3 w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-xl font-bold text-sm transition-all hover:shadow-lg pulse-button">🧠 تحليل ذكي وإضافة تلقائي</button>
                         </div>
                         
-                        <!-- إضافة يدوية -->
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-                            <h3 class="font-bold mb-3 flex items-center gap-2">✏️ إضافة معاملة يدوية</h3>
+                        <div class="glass-card rounded-2xl p-5">
+                            <h3 class="font-bold mb-3">✏️ إضافة معاملة يدوية</h3>
                             <div class="flex gap-2 mb-3">
-                                <select id="manualType" class="flex-1 p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0">
-                                    <option value="expense">💸 مصروف</option>
-                                    <option value="income">💰 دخل</option>
+                                <select id="manualType" class="flex-1 p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                                    <option value="expense">💸 مصروف (سحب)</option>
+                                    <option value="income">💰 دخل (إيداع)</option>
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
-                                <input type="number" id="manualAmount" placeholder="المبلغ" class="p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0 focus:ring-2 focus:ring-indigo-500" />
-                                <input type="text" id="manualDesc" placeholder="الوصف" class="p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0 focus:ring-2 focus:ring-indigo-500" />
+                                <input type="number" id="manualAmount" placeholder="المبلغ" class="p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20" />
+                                <input type="text" id="manualDesc" placeholder="الوصف" class="p-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20" />
                             </div>
-                            <button onclick="addManualTransaction()" class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-xl font-bold hover:bg-indigo-700 transition">
-                                حفظ المعاملة
-                            </button>
+                            <button onclick="addManualTransaction()" class="w-full mt-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2 rounded-xl font-bold hover:shadow-lg transition-all">حفظ المعاملة</button>
                         </div>
                         
-                        <!-- قائمة المعاملات -->
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-                            <h3 class="font-bold mb-3 flex items-center gap-2">
-                                📋 المعاملات 
-                                <span class="text-sm text-gray-500">(${transactions.length})</span>
-                            </h3>
-                            <div class="relative mb-3">
-                                <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                </div>
-                                <input type="text" id="searchInput" placeholder="بحث في المعاملات..." onkeyup="render()" class="w-full bg-gray-50 dark:bg-gray-700 rounded-full py-2 pr-10 pl-4 text-sm" />
+                        <div class="glass-card rounded-2xl p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold">📋 المعاملات <span id="transactionCount" class="text-sm text-gray-400"></span></h3>
+                                <input type="text" id="searchInput" placeholder="بحث..." onkeyup="render()" class="bg-white/10 backdrop-blur-sm rounded-full py-2 px-4 text-sm w-40" />
                             </div>
                             <div id="transactionsList" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
                         </div>
-                        
-                        <!-- ملخص سريع -->
-                        <div id="summaryText" class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-3 text-center text-sm"></div>
                     </main>
                 </div>
             `;
@@ -629,7 +996,6 @@
             render();
         }
         
-        // بدء التطبيق
         init();
     </script>
 </body>
