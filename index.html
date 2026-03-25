@@ -8,10 +8,6 @@
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/60/60484.png">
     <meta name="theme-color" content="#4f46e5">
     
-    <!-- React + Tailwind + jsPDF -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -27,18 +23,14 @@
 
     <style>
         body { font-family: 'Tajawal', sans-serif; -webkit-tap-highlight-color: transparent; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        .animate-slideUp { animation: slideUp 0.3s ease forwards; }
-        .animate-slideIn { animation: slideIn 0.4s ease forwards; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
         .toast-notification { position: fixed; bottom: 20px; left: 20px; right: 20px; max-width: 400px; margin: 0 auto; z-index: 9999; animation: slideIn 0.3s ease; }
         
         @media print {
             .no-print { display: none !important; }
             body { background: white; padding: 20px; }
-            .print-report { display: block !important; }
-            .transaction-item { break-inside: avoid; page-break-inside: avoid; }
         }
         
         ::-webkit-scrollbar { width: 6px; }
@@ -46,394 +38,599 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
         
-        /* تنسيق تقرير PDF */
-        .pdf-report-container {
-            direction: rtl;
-            font-family: 'Tajawal', sans-serif;
-            padding: 20px;
-            background: white;
-            color: black;
+        .transaction-item {
+            transition: all 0.2s ease;
         }
-        .pdf-report-header {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #4f46e5;
-            padding-bottom: 10px;
-        }
-        .pdf-stats {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            background: #f3f4f6;
-            padding: 15px;
-            border-radius: 12px;
-        }
-        .pdf-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .pdf-table th, .pdf-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: right;
-        }
-        .pdf-table th {
-            background: #4f46e5;
-            color: white;
+        .transaction-item:hover {
+            transform: translateX(-4px);
         }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
-    <div id="root"></div>
+    <div id="app"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback, useRef } = React;
-        const { jsPDF } = window.jspdf;
-
-        // أيقونات SVG
-        const Icons = {
-            Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
-            TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>,
-            TrendingDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>,
-            Moon: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
-            Sun: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>,
-            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-            Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
-            Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H5.78a1.65 1.65 0 0 0-1.51 1 1.65 1.65 0 0 0 .33 1.82l.04.04A10 10 0 0 0 12 17.66a10 10 0 0 0 6.36-2.62z"/></svg>,
-            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-            Printer: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        };
-
-        // مكون الإشعار
-        const ToastNotification = ({ message, type, onClose }) => {
-            useEffect(() => {
-                const timer = setTimeout(onClose, 3500);
-                return () => clearTimeout(timer);
-            }, [onClose]);
+    <script>
+        // ==================== محلل الرسائل الذكي ====================
+        const SmartSmsAnalyzer = {
+            // قائمة موسعة للكلمات المفتاحية مع أوزان
+            keywords: {
+                income: {
+                    strong: [
+                        'تم إيداع', 'إيداع', 'استلام', 'قبض', 'تم الاستلام', 'تم القبض',
+                        'تحويل واصل', 'إضافة رصيد', 'تمت الإضافة', 'مرتب', 'راتب',
+                        'مكسب', 'ربح', 'تعويض', 'منحة', 'تبرع', 'هدية', 'مكافأة',
+                        'مستحقات', 'أرباح', 'عائد', 'فوائد'
+                    ],
+                    medium: [
+                        'وارد', 'داخل', 'وصول', 'إضافة', 'زيادة', 'كسب'
+                    ]
+                },
+                expense: {
+                    strong: [
+                        'تم التحويل', 'تحويل', 'تم تنفيذ تحويل', 'تحويل لحظي',
+                        'سحب', 'خصم', 'دفع', 'تم السحب', 'تم الخصم', 'تم الدفع',
+                        'شراء', 'مشتريات', 'فاتورة', 'فواتير', 'اشتراك', 'خدمة',
+                        'مصروف', 'نفقة', 'استهلاك', 'شحن', 'تعبئة'
+                    ],
+                    medium: [
+                        'صادر', 'خارج', 'إرسال', 'صرف', 'تكلفة', 'ثمن'
+                    ]
+                }
+            },
             
-            const bgColor = type === 'income' ? 'bg-green-500' : type === 'expense' ? 'bg-red-500' : 'bg-indigo-500';
-            return (
-                <div className={`toast-notification ${bgColor} text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3`}>
-                    <span className="text-2xl">{type === 'income' ? '💰' : type === 'expense' ? '💸' : '📄'}</span>
-                    <div className="flex-1"><p className="font-bold text-sm">{message.title}</p><p className="text-xs opacity-90">{message.body}</p></div>
-                    <button onClick={onClose} className="text-white/70">✕</button>
-                </div>
-            );
-        };
-
-        // مكون محاكاة الرسائل
-        const SmsSimulator = ({ onAddTransaction, onShowNotification }) => {
-            const [smsText, setSmsText] = useState('');
+            // أنماط التطبيقات
+            appPatterns: {
+                income: ['InstaPay', 'استلام من', 'إيداع من', 'تحويل من'],
+                expense: ['تحويل إلى', 'دفع إلى', 'سداد', 'شحن رصيد']
+            },
             
-            const parseSmsAndAdd = () => {
-                const text = smsText;
-                let amount = null;
-                let isIncome = false;
+            // تحليل متقدم للرسالة
+            analyze(message) {
+                const lowerMessage = message.toLowerCase();
+                let incomeScore = 0;
+                let expenseScore = 0;
                 
-                const amountMatch = text.match(/(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:جنيه|EGP|ج\.م|LE)/i);
-                if (amountMatch) amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+                // فحص الكلمات المفتاحية القوية
+                this.keywords.income.strong.forEach(word => {
+                    if (lowerMessage.includes(word.toLowerCase())) incomeScore += 3;
+                });
                 
-                if (text.includes('قبض') || text.includes('استلام') || text.includes('تحويل واصل') || text.includes('إيداع')) isIncome = true;
-                else if (text.includes('صرف') || text.includes('دفع') || text.includes('سحب') || text.includes('خصم')) isIncome = false;
+                this.keywords.expense.strong.forEach(word => {
+                    if (lowerMessage.includes(word.toLowerCase())) expenseScore += 3;
+                });
                 
-                if (amount && amount > 0) {
-                    onAddTransaction({
-                        id: Date.now(),
-                        type: isIncome ? 'income' : 'expense',
-                        amount: amount,
-                        desc: text.substring(0, 45),
-                        category: isIncome ? 'تحويل' : 'أخرى',
-                        date: new Date().toISOString().split('T')[0],
-                        time: new Date().toLocaleTimeString('ar-EG'),
-                        auto: true
-                    });
-                    onShowNotification({
-                        title: isIncome ? '💰 استلام مبلغ جديد' : '💸 تم صرف مبلغ',
-                        body: `${amount.toLocaleString()} جنيه`,
-                        type: isIncome ? 'income' : 'expense'
-                    });
-                    setSmsText('');
+                // فحص الكلمات المفتاحية المتوسطة
+                this.keywords.income.medium.forEach(word => {
+                    if (lowerMessage.includes(word.toLowerCase())) incomeScore += 1.5;
+                });
+                
+                this.keywords.expense.medium.forEach(word => {
+                    if (lowerMessage.includes(word.toLowerCase())) expenseScore += 1.5;
+                });
+                
+                // فحص أنماط التطبيقات
+                this.appPatterns.income.forEach(pattern => {
+                    if (lowerMessage.includes(pattern.toLowerCase())) incomeScore += 2;
+                });
+                
+                this.appPatterns.expense.forEach(pattern => {
+                    if (lowerMessage.includes(pattern.toLowerCase())) expenseScore += 2;
+                });
+                
+                // تحليل السياق
+                if (lowerMessage.includes('من') && !lowerMessage.includes('إلى')) incomeScore += 1;
+                if (lowerMessage.includes('إلى') && !lowerMessage.includes('من')) expenseScore += 1;
+                
+                // تحديد النوع
+                let detectedType = null;
+                let confidence = 'medium';
+                
+                if (incomeScore > expenseScore && incomeScore > 1) {
+                    detectedType = 'income';
+                    confidence = incomeScore > 5 ? 'high' : (incomeScore > 2 ? 'medium' : 'low');
+                } else if (expenseScore > incomeScore && expenseScore > 1) {
+                    detectedType = 'expense';
+                    confidence = expenseScore > 5 ? 'high' : (expenseScore > 2 ? 'medium' : 'low');
                 } else {
-                    alert('⚠️ لم يتم التعرف على مبلغ في النص');
+                    // محاولة التعرف من خلال كلمات محددة
+                    if (lowerMessage.includes('تحويل') && lowerMessage.includes('من')) detectedType = 'income';
+                    else if (lowerMessage.includes('تحويل') && lowerMessage.includes('إلى')) detectedType = 'expense';
+                    else if (lowerMessage.includes('تم إيداع')) detectedType = 'income';
+                    else if (lowerMessage.includes('تم سحب')) detectedType = 'expense';
+                    detectedType = null;
+                    confidence = 'low';
                 }
-            };
-            
-            return (
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-4 border border-indigo-200">
-                    <h4 className="font-bold text-sm mb-2">📱 لصق رسالة البنك (InstaPay - فودافون كاش)</h4>
-                    <textarea value={smsText} onChange={e => setSmsText(e.target.value)} placeholder="مثال: تم استلام 500 جنيه من InstaPay" className="w-full p-3 rounded-xl border dark:bg-gray-800 text-sm" rows="2"></textarea>
-                    <button onClick={parseSmsAndAdd} className="mt-2 w-full bg-indigo-600 text-white py-2 rounded-xl font-bold text-sm">🤖 تحليل وإضافة تلقائي</button>
-                </div>
-            );
-        };
-
-        // المكون الرئيسي
-        const App = () => {
-            const [transactions, setTransactions] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('mahfazty_pro_data') || '[]'); } catch { return []; }
-            });
-            const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mahfazty_theme') === 'dark');
-            const [searchTerm, setSearchTerm] = useState('');
-            const [notification, setNotification] = useState(null);
-            const [manualTrans, setManualTrans] = useState({ type: 'expense', amount: '', desc: '' });
-            
-            // حفظ البيانات
-            useEffect(() => localStorage.setItem('mahfazty_pro_data', JSON.stringify(transactions)), [transactions]);
-            useEffect(() => {
-                if (darkMode) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
-                localStorage.setItem('mahfazty_theme', darkMode ? 'dark' : 'light');
-            }, [darkMode]);
-            
-            // طلب إذن الإشعارات
-            useEffect(() => {
-                if ('Notification' in window && Notification.permission === 'default') {
-                    Notification.requestPermission();
-                }
-            }, []);
-            
-            // إضافة معاملة
-            const addTransaction = useCallback((newTrans) => {
-                setTransactions(prev => [newTrans, ...prev]);
-                setNotification({
-                    title: newTrans.type === 'income' ? '💰 إيداع جديد' : '💸 خصم جديد',
-                    body: `${newTrans.amount.toLocaleString()} جنيه - ${newTrans.desc}`,
-                    type: newTrans.type
-                });
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification(newTrans.type === 'income' ? '💰 إيداع' : '💸 خصم', {
-                        body: `${newTrans.amount.toLocaleString()} جنيه`,
-                        icon: 'https://cdn-icons-png.flaticon.com/512/60/60484.png'
-                    });
-                }
-            }, []);
-            
-            // حذف معاملة مع تأكيد
-            const deleteTransaction = (id, desc, amount) => {
-                if (window.confirm(`⚠️ هل أنت متأكد من حذف المعاملة:\n${desc}\nالمبلغ: ${amount.toLocaleString()} جنيه؟`)) {
-                    setTransactions(prev => prev.filter(t => t.id !== id));
-                    setNotification({
-                        title: '🗑️ تم الحذف',
-                        body: `تم حذف المعاملة: ${desc}`,
-                        type: 'info'
-                    });
-                }
-            };
-            
-            // إضافة يدوية
-            const handleManualAdd = () => {
-                if (!manualTrans.amount || !manualTrans.desc) return;
-                addTransaction({
-                    id: Date.now(),
-                    type: manualTrans.type,
-                    amount: parseFloat(manualTrans.amount),
-                    desc: manualTrans.desc,
-                    category: manualTrans.type === 'income' ? 'تحويل' : 'أخرى',
-                    date: new Date().toISOString().split('T')[0],
-                    time: new Date().toLocaleTimeString('ar-EG'),
-                    auto: false
-                });
-                setManualTrans({ type: manualTrans.type, amount: '', desc: '' });
-            };
-            
-            // تصدير PDF
-            const exportToPDF = async () => {
-                const stats = {
-                    income: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0),
-                    expense: transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0),
-                    balance: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0) - 
-                              transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0)
-                };
                 
-                // إنشاء عنصر HTML للتقرير
-                const reportDiv = document.createElement('div');
-                reportDiv.className = 'pdf-report-container';
-                reportDiv.innerHTML = `
-                    <div class="pdf-report-header">
-                        <h1 style="color: #4f46e5; margin:0;">📊 محفظتي برو</h1>
-                        <h3>تقرير المعاملات المالية</h3>
-                        <p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
+                return { type: detectedType, confidence, incomeScore, expenseScore };
+            },
+            
+            // استخراج المبلغ
+            extractAmount(message) {
+                const patterns = [
+                    /(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:جنيه|ج\.م|EGP|LE|جنيه مصري)/i,
+                    /(\d+(?:,\d+)?(?:\.\d+)?)\s*جنيه/i,
+                    /مبلغ\s*(\d+(?:,\d+)?(?:\.\d+)?)/i,
+                    /قيمة\s*(\d+(?:,\d+)?(?:\.\d+)?)/i,
+                    /بمبلغ\s*(\d+(?:,\d+)?(?:\.\d+)?)/i,
+                    /(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:ريال|دولار)/i
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = message.match(pattern);
+                    if (match) {
+                        let amount = parseFloat(match[1].replace(/,/g, ''));
+                        if (!isNaN(amount) && amount > 0) return amount;
+                    }
+                }
+                return null;
+            },
+            
+            // استخراج وصف مناسب
+            extractDescription(message) {
+                let desc = message.substring(0, 60);
+                desc = desc.replace(/\n/g, ' ').trim();
+                return desc;
+            }
+        };
+        
+        // ==================== التطبيق الرئيسي ====================
+        let transactions = [];
+        let darkMode = false;
+        
+        // تحميل البيانات من localStorage
+        function loadData() {
+            try {
+                const saved = localStorage.getItem('mahfazty_pro_data');
+                if (saved) transactions = JSON.parse(saved);
+                
+                const theme = localStorage.getItem('mahfazty_theme');
+                if (theme === 'dark') {
+                    darkMode = true;
+                    document.documentElement.classList.add('dark');
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        // حفظ البيانات
+        function saveData() {
+            localStorage.setItem('mahfazty_pro_data', JSON.stringify(transactions));
+            localStorage.setItem('mahfazty_theme', darkMode ? 'dark' : 'light');
+        }
+        
+        // عرض الإشعار
+        function showNotification(title, body, type) {
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = `toast-notification ${type === 'income' ? 'bg-green-500' : type === 'expense' ? 'bg-red-500' : 'bg-indigo-500'} text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3`;
+            notificationDiv.innerHTML = `
+                <span class="text-2xl">${type === 'income' ? '💰' : type === 'expense' ? '💸' : '📄'}</span>
+                <div class="flex-1"><p class="font-bold text-sm">${title}</p><p class="text-xs opacity-90">${body}</p></div>
+                <button onclick="this.parentElement.remove()" class="text-white/70">✕</button>
+            `;
+            document.body.appendChild(notificationDiv);
+            setTimeout(() => notificationDiv.remove(), 3500);
+            
+            // إشعار المتصفح
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/60/60484.png' });
+            }
+        }
+        
+        // إضافة معاملة
+        function addTransaction(transaction) {
+            transactions = [transaction, ...transactions];
+            saveData();
+            render();
+            showNotification(
+                transaction.type === 'income' ? '💰 إيداع جديد' : '💸 خصم جديد',
+                `${transaction.amount.toLocaleString()} جنيه - ${transaction.desc.substring(0, 40)}`,
+                transaction.type
+            );
+        }
+        
+        // حذف معاملة
+        function deleteTransaction(id, desc, amount) {
+            if (confirm(`⚠️ هل أنت متأكد من حذف المعاملة:\n${desc}\nالمبلغ: ${amount.toLocaleString()} جنيه؟`)) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveData();
+                render();
+                showNotification('🗑️ تم الحذف', `تم حذف المعاملة: ${desc.substring(0, 40)}`, 'info');
+            }
+        }
+        
+        // تحليل وإضافة رسالة
+        async function analyzeAndAddSms() {
+            const textarea = document.getElementById('smsText');
+            const text = textarea.value.trim();
+            
+            if (!text) {
+                alert('⚠️ الرجاء لصق نص الرسالة أولاً');
+                return;
+            }
+            
+            const btn = document.getElementById('analyzeBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2"></span> جاري التحليل...';
+            btn.disabled = true;
+            
+            // محاكاة وقت التحليل
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            const amount = SmartSmsAnalyzer.extractAmount(text);
+            
+            if (!amount) {
+                alert('⚠️ لم يتم التعرف على المبلغ في النص.\nتأكد من وجود رقم متبوع بكلمة "جنيه" أو "EGP".\nمثال: 500 جنيه');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+            
+            const analysis = SmartSmsAnalyzer.analyze(text);
+            let transactionType = analysis.type;
+            
+            if (!transactionType) {
+                const userChoice = confirm(
+                    `🤔 لم أتمكن من تحديد نوع المعاملة بدقة.\n\n` +
+                    `المبلغ: ${amount.toLocaleString()} جنيه\n` +
+                    `الرسالة: ${text.substring(0, 80)}...\n\n` +
+                    `اضغط "موافق" إذا كانت إيداع (دخل)\n` +
+                    `اضغط "إلغاء" إذا كانت سحب (مصروف)`
+                );
+                transactionType = userChoice ? 'income' : 'expense';
+            }
+            
+            const description = SmartSmsAnalyzer.extractDescription(text);
+            const confidenceText = analysis.confidence === 'high' ? '🟢 دقة عالية' : 
+                                  (analysis.confidence === 'medium' ? '🟡 دقة متوسطة' : '🔴 دقة منخفضة');
+            
+            addTransaction({
+                id: Date.now(),
+                type: transactionType,
+                amount: amount,
+                desc: description,
+                date: new Date().toISOString().split('T')[0],
+                time: new Date().toLocaleTimeString('ar-EG'),
+                auto: true,
+                confidence: analysis.confidence
+            });
+            
+            textarea.value = '';
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            
+            // عرض نتيجة التحليل
+            const resultDiv = document.getElementById('analysisResult');
+            resultDiv.innerHTML = `
+                <div class="mt-2 p-2 rounded-lg text-xs ${transactionType === 'income' ? 'bg-green-100 dark:bg-green-900/30 text-green-700' : 'bg-red-100 dark:bg-red-900/30 text-red-700'}">
+                    <div class="flex items-center justify-between">
+                        <span>🔍 نتيجة التحليل:</span>
+                        <span class="font-bold">${transactionType === 'income' ? '💰 دخل (إيداع)' : '💸 مصروف (سحب)'}</span>
                     </div>
-                    <div class="pdf-stats">
-                        <div><strong>💰 الرصيد</strong><br>${stats.balance.toLocaleString()} ج.م</div>
-                        <div><strong>📈 إجمالي الدخل</strong><br>+${stats.income.toLocaleString()} ج.م</div>
-                        <div><strong>📉 إجمالي المصروفات</strong><br>-${stats.expense.toLocaleString()} ج.م</div>
-                        <div><strong>📋 عدد المعاملات</strong><br>${transactions.length}</div>
+                    <div class="flex items-center justify-between mt-1">
+                        <span>📊 الثقة:</span>
+                        <span>${confidenceText}</span>
                     </div>
-                    <table class="pdf-table">
-                        <thead>
+                    <div class="flex items-center justify-between mt-1">
+                        <span>💵 المبلغ:</span>
+                        <span>${amount.toLocaleString()} جنيه</span>
+                    </div>
+                </div>
+            `;
+            setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
+        }
+        
+        // إضافة يدوية
+        function addManualTransaction() {
+            const type = document.getElementById('manualType').value;
+            const amount = document.getElementById('manualAmount').value;
+            const desc = document.getElementById('manualDesc').value;
+            
+            if (!amount || !desc) {
+                alert('⚠️ الرجاء إدخال المبلغ والوصف');
+                return;
+            }
+            
+            addTransaction({
+                id: Date.now(),
+                type: type,
+                amount: parseFloat(amount),
+                desc: desc,
+                date: new Date().toISOString().split('T')[0],
+                time: new Date().toLocaleTimeString('ar-EG'),
+                auto: false
+            });
+            
+            document.getElementById('manualAmount').value = '';
+            document.getElementById('manualDesc').value = '';
+        }
+        
+        // تصدير PDF
+        async function exportToPDF() {
+            const stats = {
+                income: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0),
+                expense: transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0),
+                balance: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0) - 
+                          transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0)
+            };
+            
+            const reportDiv = document.createElement('div');
+            reportDiv.style.cssText = 'direction: rtl; font-family: Tajawal, sans-serif; padding: 20px; background: white; color: black; position: absolute; top: -9999px;';
+            reportDiv.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #4f46e5; padding-bottom: 10px;">
+                    <h1 style="color: #4f46e5; margin:0;">📊 محفظتي برو</h1>
+                    <h3>تقرير المعاملات المالية</h3>
+                    <p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
+                </div>
+                <div style="display: flex; justify-content: space-around; margin: 20px 0; background: #f3f4f6; padding: 15px; border-radius: 12px;">
+                    <div><strong>💰 الرصيد</strong><br>${stats.balance.toLocaleString()} ج.م</div>
+                    <div><strong>📈 إجمالي الدخل</strong><br>+${stats.income.toLocaleString()} ج.م</div>
+                    <div><strong>📉 إجمالي المصروفات</strong><br>-${stats.expense.toLocaleString()} ج.م</div>
+                    <div><strong>📋 عدد المعاملات</strong><br>${transactions.length}</div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="background: #4f46e5; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 8px;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">التاريخ</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">الوصف</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">النوع</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">المبلغ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.slice(0, 50).map((t, i) => `
                             <tr>
-                                <th>#</th>
-                                <th>التاريخ</th>
-                                <th>الوصف</th>
-                                <th>النوع</th>
-                                <th>المبلغ</th>
+                                <td style="border: 1px solid #ddd; padding: 8px;">${i + 1}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">${t.date}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">${t.desc}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">${t.type === 'income' ? '💰 دخل' : '💸 مصروف'}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; color: ${t.type === 'income' ? 'green' : 'red'}">${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()} ج.م</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${transactions.slice(0, 50).map((t, i) => `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${t.date}</td>
-                                    <td>${t.desc}</td>
-                                    <td>${t.type === 'income' ? '💰 دخل' : '💸 مصروف'}</td>
-                                    <td style="color: ${t.type === 'income' ? 'green' : 'red'}">${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()} ج.م</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
-                        تم إنشاء هذا التقرير بواسطة محفظتي برو - إدارة مالية ذكية
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
+                    تم إنشاء هذا التقرير بواسطة محفظتي برو - إدارة مالية ذكية
+                </div>
+            `;
+            
+            document.body.appendChild(reportDiv);
+            
+            try {
+                const canvas = await html2canvas(reportDiv, { scale: 2, backgroundColor: '#ffffff' });
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgWidth = 190;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                pdf.save(`تقرير_محفظتي_${new Date().toISOString().slice(0, 10)}.pdf`);
+                showNotification('📄 تم التصدير', 'تم حفظ التقرير بنجاح كملف PDF', 'info');
+            } catch (error) {
+                console.error('PDF error:', error);
+                alert('حدث خطأ في إنشاء PDF');
+            } finally {
+                document.body.removeChild(reportDiv);
+            }
+        }
+        
+        // طباعة
+        function printReport() {
+            window.print();
+        }
+        
+        // تبديل الوضع الليلي
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            if (darkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            saveData();
+            render();
+        }
+        
+        // طلب إذن الإشعارات
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+        
+        // عرض قائمة المعاملات
+        function renderTransactions(searchTerm = '') {
+            const container = document.getElementById('transactionsList');
+            const filtered = transactions.filter(t => t.desc.toLowerCase().includes(searchTerm.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-gray-400">
+                        <p class="text-4xl mb-2">📭</p>
+                        <p>لا توجد معاملات</p>
+                        <p class="text-xs mt-2">جرب لصق رسالة من InstaPay أو Vodafone Cash</p>
                     </div>
                 `;
-                
-                document.body.appendChild(reportDiv);
-                
-                try {
-                    const canvas = await html2canvas(reportDiv, { scale: 2, backgroundColor: '#ffffff' });
-                    const imgData = canvas.toDataURL('image/png');
-                    const pdf = new jsPDF('p', 'mm', 'a4');
-                    const imgWidth = 190;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-                    pdf.save(`تقرير_محفظتي_${new Date().toISOString().slice(0, 10)}.pdf`);
-                    
-                    setNotification({
-                        title: '📄 تم التصدير',
-                        body: 'تم حفظ التقرير بنجاح كملف PDF',
-                        type: 'info'
-                    });
-                } catch (error) {
-                    console.error('PDF error:', error);
-                    alert('حدث خطأ في إنشاء PDF، يمكنك استخدام طباعة الصفحة');
-                } finally {
-                    document.body.removeChild(reportDiv);
-                }
-            };
+                return;
+            }
             
-            // طباعة التقرير
-            const printReport = () => {
-                window.print();
-            };
+            container.innerHTML = filtered.map(t => `
+                <div class="transaction-item flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:shadow transition group">
+                    <div class="flex-1">
+                        <p class="font-medium text-sm">${escapeHtml(t.desc)}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <p class="text-[10px] text-gray-400">${t.date} ${t.time}</p>
+                            ${t.auto ? '<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full">🤖 تلقائي</span>' : ''}
+                            ${t.confidence ? `<span class="text-[9px] px-1.5 py-0.5 rounded-full ${t.confidence === 'high' ? 'bg-green-100 text-green-600' : t.confidence === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}">${t.confidence === 'high' ? 'دقة عالية' : t.confidence === 'medium' ? 'دقة متوسطة' : 'دقة منخفضة'}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}" dir="ltr">
+                            ${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()}
+                        </span>
+                        <button onclick="deleteTransaction(${t.id}, '${escapeHtml(t.desc)}', ${t.amount})" class="text-gray-400 hover:text-red-500 transition p-1 opacity-0 group-hover:opacity-100" title="حذف المعاملة">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // تحديث الإحصائيات
+        function updateStats() {
+            const income = transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0);
+            const expense = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0);
+            const balance = income - expense;
             
-            // إحصائيات
-            const stats = useMemo(() => {
-                const income = transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0);
-                const expense = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0);
-                return { income, expense, balance: income - expense };
-            }, [transactions]);
+            document.getElementById('statBalance').innerHTML = `${balance.toLocaleString()} <span class="text-xs">ج.م</span>`;
+            document.getElementById('statIncome').innerHTML = `+${income.toLocaleString()}`;
+            document.getElementById('statExpense').innerHTML = `-${expense.toLocaleString()}`;
             
-            return (
-                <div className="min-h-screen pb-24">
-                    {notification && <ToastNotification message={notification} type={notification.type} onClose={() => setNotification(null)} />}
-                    
-                    {/* Header */}
-                    <nav className="fixed w-full z-20 top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b shadow-sm">
-                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <img src="https://cdn-icons-png.flaticon.com/512/8552/8552791.png" className="w-8 h-8" alt="logo" />
-                                <span className="font-black text-xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">محفظتي برو</span>
+            const summary = document.getElementById('summaryText');
+            if (transactions.length > 0) {
+                summary.innerHTML = `📊 إجمالي ${transactions.length} معاملة | آخر تحديث: ${transactions[0]?.date || 'لا توجد معاملات'}`;
+            } else {
+                summary.innerHTML = '';
+            }
+        }
+        
+        // عرض الواجهة بالكامل
+        function render() {
+            updateStats();
+            const searchTerm = document.getElementById('searchInput')?.value || '';
+            renderTransactions(searchTerm);
+        }
+        
+        // دالة مساعدة لتجنب XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        // تهيئة التطبيق
+        function init() {
+            loadData();
+            requestNotificationPermission();
+            
+            const html = `
+                <div class="min-h-screen pb-24">
+                    <!-- Header -->
+                    <nav class="fixed w-full z-20 top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b shadow-sm">
+                        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <img src="https://cdn-icons-png.flaticon.com/512/8552/8552791.png" class="w-8 h-8" alt="logo" />
+                                <span class="font-black text-xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">محفظتي برو</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {/* أزرار التصدير */}
-                                <button onClick={exportToPDF} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-red-600" title="تصدير PDF">
-                                    <Icons.Download />
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportToPDF()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-red-600" title="تصدير PDF">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 </button>
-                                <button onClick={printReport} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-blue-600" title="طباعة">
-                                    <Icons.Printer />
+                                <button onclick="printReport()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-blue-600" title="طباعة">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                                 </button>
-                                <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-gray-100">
-                                    {darkMode ? <Icons.Sun /> : <Icons.Moon />}
+                                <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-gray-100">
+                                    ${darkMode ? 
+                                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>' : 
+                                        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+                                    }
                                 </button>
                             </div>
                         </div>
                     </nav>
                     
-                    <main className="pt-20 px-4 max-w-6xl mx-auto space-y-4">
-                        {/* بطاقات الإحصائيات */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white">
-                                <p className="text-xs opacity-80">الرصيد</p>
-                                <p className="text-2xl font-bold" dir="ltr">{stats.balance.toLocaleString()} <span className="text-xs">ج.م</span></p>
+                    <main class="pt-20 px-4 max-w-6xl mx-auto space-y-4">
+                        <!-- بطاقات الإحصائيات -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                                <p class="text-xs opacity-80">الرصيد الحالي</p>
+                                <p class="text-2xl font-bold" id="statBalance" dir="ltr">0 <span class="text-xs">ج.م</span></p>
                             </div>
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-green-500">
-                                <p className="text-xs text-green-600">الدخل</p>
-                                <p className="text-xl font-bold text-green-600">+{stats.income.toLocaleString()}</p>
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-green-500">
+                                <p class="text-xs text-green-600">إجمالي الدخل</p>
+                                <p class="text-xl font-bold text-green-600" id="statIncome">+0</p>
                             </div>
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-red-500">
-                                <p className="text-xs text-red-500">المصروفات</p>
-                                <p className="text-xl font-bold text-red-500">-{stats.expense.toLocaleString()}</p>
-                            </div>
-                        </div>
-                        
-                        {/* محاكاة الرسائل */}
-                        <SmsSimulator onAddTransaction={addTransaction} onShowNotification={(n) => setNotification(n)} />
-                        
-                        {/* إضافة يدوية */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-                            <h3 className="font-bold mb-3">✏️ إضافة معاملة يدوية</h3>
-                            <div className="flex gap-2 mb-3">
-                                <button onClick={() => setManualTrans({...manualTrans, type: 'expense'})} className={`flex-1 py-2 rounded-xl font-bold ${manualTrans.type === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-100'}`}>مصروف</button>
-                                <button onClick={() => setManualTrans({...manualTrans, type: 'income'})} className={`flex-1 py-2 rounded-xl font-bold ${manualTrans.type === 'income' ? 'bg-green-500 text-white' : 'bg-gray-100'}`}>دخل</button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <input type="number" placeholder="المبلغ" value={manualTrans.amount} onChange={e => setManualTrans({...manualTrans, amount: e.target.value})} className="p-2 rounded-xl bg-gray-50 border-0" />
-                                <input type="text" placeholder="الوصف" value={manualTrans.desc} onChange={e => setManualTrans({...manualTrans, desc: e.target.value})} className="p-2 rounded-xl bg-gray-50 border-0" />
-                            </div>
-                            <button onClick={handleManualAdd} className="w-full mt-3 bg-indigo-600 text-white py-2 rounded-xl font-bold">حفظ المعاملة</button>
-                        </div>
-                        
-                        {/* قائمة المعاملات مع زر حذف */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-                            <h3 className="font-bold mb-3 flex items-center gap-2">📋 المعاملات <span className="text-sm text-gray-500">({transactions.length})</span></h3>
-                            <div className="relative mb-3">
-                                <Icons.Search />
-                                <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-50 rounded-full py-2 pr-10 pl-4 text-sm" />
-                            </div>
-                            <div className="space-y-2 max-h-[450px] overflow-y-auto">
-                                {transactions.filter(t => t.desc.toLowerCase().includes(searchTerm.toLowerCase())).map(t => (
-                                    <div key={t.id} className="transaction-item flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:shadow transition">
-                                        <div className="flex-1">
-                                            <p className="font-medium text-sm">{t.desc}</p>
-                                            <p className="text-[10px] text-gray-400">{t.date} {t.time}</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
-                                                {t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString()}
-                                            </span>
-                                            {t.auto && <span className="text-[9px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">تلقائي</span>}
-                                            <button 
-                                                onClick={() => deleteTransaction(t.id, t.desc, t.amount)}
-                                                className="text-gray-400 hover:text-red-500 transition p-1"
-                                                title="حذف المعاملة"
-                                            >
-                                                <Icons.Trash />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {transactions.length === 0 && (
-                                    <div className="text-center py-10 text-gray-400">
-                                        <p>📭 لا توجد معاملات</p>
-                                        <p className="text-xs mt-1">جرب إضافة رسالة من InstaPay أو Vodafone Cash</p>
-                                    </div>
-                                )}
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-red-500">
+                                <p class="text-xs text-red-500">إجمالي المصروفات</p>
+                                <p class="text-xl font-bold text-red-500" id="statExpense">-0</p>
                             </div>
                         </div>
                         
-                        {/* ملخص سريع */}
-                        {transactions.length > 0 && (
-                            <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-3 text-center text-sm">
-                                📊 إجمالي {transactions.length} معاملة | آخر تحديث: {transactions[0]?.date || 'لا توجد معاملات'}
+                        <!-- محلل الرسائل الذكي -->
+                        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-800">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-bold text-sm flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3L14 8L19 8L15 11L17 16L12 13L7 16L9 11L5 8L10 8L12 3Z"/></svg>
+                                    📱 محلل الرسائل الذكي
+                                </h4>
+                                <span class="text-xs text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-full">دقة عالية</span>
                             </div>
-                        )}
+                            
+                            <textarea id="smsText" class="w-full p-3 rounded-xl border dark:bg-gray-800 text-sm min-h-[100px]" rows="3" dir="rtl" placeholder="📝 الصق رسالة البنك أو InstaPay أو Vodafone Cash هنا...
+
+مثال للدخل: &quot;تم إيداع 500 جنيه لحسابك من InstaPay&quot;
+مثال للمصروف: &quot;تم تحويل 300 جنيه إلى 01012345678&quot;"></textarea>
+                            
+                            <div id="analysisResult"></div>
+                            
+                            <button id="analyzeBtn" onclick="analyzeAndAddSms()" class="mt-3 w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-indigo-700 flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3L14 8L19 8L15 11L17 16L12 13L7 16L9 11L5 8L10 8L12 3Z"/></svg>
+                                🤖 تحليل وإضافة تلقائي
+                            </button>
+                            
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                                ✨ يتعرف تلقائياً على المبلغ ونوع المعاملة (دخل/مصروف) بدقة عالية
+                            </p>
+                        </div>
+                        
+                        <!-- إضافة يدوية -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                            <h3 class="font-bold mb-3 flex items-center gap-2">✏️ إضافة معاملة يدوية</h3>
+                            <div class="flex gap-2 mb-3">
+                                <select id="manualType" class="flex-1 p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0">
+                                    <option value="expense">💸 مصروف</option>
+                                    <option value="income">💰 دخل</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="manualAmount" placeholder="المبلغ" class="p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0 focus:ring-2 focus:ring-indigo-500" />
+                                <input type="text" id="manualDesc" placeholder="الوصف" class="p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0 focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                            <button onclick="addManualTransaction()" class="w-full mt-3 bg-indigo-600 text-white py-2 rounded-xl font-bold hover:bg-indigo-700 transition">
+                                حفظ المعاملة
+                            </button>
+                        </div>
+                        
+                        <!-- قائمة المعاملات -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
+                            <h3 class="font-bold mb-3 flex items-center gap-2">
+                                📋 المعاملات 
+                                <span class="text-sm text-gray-500">(${transactions.length})</span>
+                            </h3>
+                            <div class="relative mb-3">
+                                <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                </div>
+                                <input type="text" id="searchInput" placeholder="بحث في المعاملات..." onkeyup="render()" class="w-full bg-gray-50 dark:bg-gray-700 rounded-full py-2 pr-10 pl-4 text-sm" />
+                            </div>
+                            <div id="transactionsList" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
+                        </div>
+                        
+                        <!-- ملخص سريع -->
+                        <div id="summaryText" class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-3 text-center text-sm"></div>
                     </main>
                 </div>
-            );
-        };
+            `;
+            
+            document.getElementById('app').innerHTML = html;
+            render();
+        }
         
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        // بدء التطبيق
+        init();
     </script>
 </body>
 </html>
