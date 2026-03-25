@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>محفظتي برو | دعم InstaPay - فودافون كاش - أورنج كاش</title>
+    <title>محفظتي برو | Mahfazty Pro - إدارة مالية ذكية</title>
     
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/60/60484.png">
     <meta name="theme-color" content="#4f46e5">
     
+    <!-- React + Tailwind + jsPDF -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     
@@ -24,152 +27,143 @@
 
     <style>
         body { font-family: 'Tajawal', sans-serif; -webkit-tap-highlight-color: transparent; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .animate-slideUp { animation: slideUp 0.3s ease forwards; }
         .animate-slideIn { animation: slideIn 0.4s ease forwards; }
         .toast-notification { position: fixed; bottom: 20px; left: 20px; right: 20px; max-width: 400px; margin: 0 auto; z-index: 9999; animation: slideIn 0.3s ease; }
-        .wallet-badge { animation: pulse 1s infinite; }
-        @media print { .no-print { display: none; } }
         
-        .instapay-bg { background: linear-gradient(135deg, #4a00e0, #8e2de2); }
-        .vodafone-bg { background: linear-gradient(135deg, #e60000, #b30000); }
-        .orange-bg { background: linear-gradient(135deg, #ff6600, #cc5500); }
-        .etisalat-bg { background: linear-gradient(135deg, #00a651, #008040); }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 20px; }
+            .print-report { display: block !important; }
+            .transaction-item { break-inside: avoid; page-break-inside: avoid; }
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        
+        /* تنسيق تقرير PDF */
+        .pdf-report-container {
+            direction: rtl;
+            font-family: 'Tajawal', sans-serif;
+            padding: 20px;
+            background: white;
+            color: black;
+        }
+        .pdf-report-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4f46e5;
+            padding-bottom: 10px;
+        }
+        .pdf-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 12px;
+        }
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .pdf-table th, .pdf-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+        }
+        .pdf-table th {
+            background: #4f46e5;
+            color: white;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+        const { jsPDF } = window.jspdf;
 
-        // أيقونات المحافظ
-        const WalletIcons = {
-            instapay: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 10h18M7 15h1m4 0h1m4 0h1M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>,
-            vodafone: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M8 8h8M8 12h6M8 16h4"/></svg>,
-            orange: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 0 0 20 15 15 0 0 0 0-20z"/></svg>,
-            cash: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
-        };
-
-        // بيانات المحافظ للتعرّف عليها
-        const WALLETS = [
-            { name: 'InstaPay', keywords: ['instapay', 'انستا باي', 'انستاباي'], icon: 'instapay', bg: 'instapay-bg', color: 'text-purple-600' },
-            { name: 'Vodafone Cash', keywords: ['vodafone', 'فودافون', 'vodafone cash', 'فودافون كاش', 'voda cash'], icon: 'vodafone', bg: 'vodafone-bg', color: 'text-red-600' },
-            { name: 'Orange Cash', keywords: ['orange', 'أورنج', 'orange cash', 'أورنج كاش', 'orange money'], icon: 'orange', bg: 'orange-bg', color: 'text-orange-600' },
-            { name: 'Etisalat Cash', keywords: ['etisalat', 'اتصالات', 'we cash', 'وي كاش', 'etisalat cash'], icon: 'cash', bg: 'etisalat-bg', color: 'text-green-600' }
-        ];
-
-        // تحليل رسائل المحافظ
-        const parseWalletSms = (smsText) => {
-            const lowerText = smsText.toLowerCase();
-            
-            // 1. التعرف على المحفظة
-            let detectedWallet = null;
-            for (const wallet of WALLETS) {
-                for (const kw of wallet.keywords) {
-                    if (lowerText.includes(kw.toLowerCase())) {
-                        detectedWallet = wallet;
-                        break;
-                    }
-                }
-                if (detectedWallet) break;
-            }
-            
-            // 2. استخراج المبلغ
-            let amount = null;
-            const patterns = [
-                /(\d+(?:[,.]?\d+)?)\s*(?:جنيه|EGP|ج\.م|LE)/i,
-                /مبلغ\s*(\d+(?:[,.]?\d+)?)/i,
-                /قيمة\s*(\d+(?:[,.]?\d+)?)/i,
-                /(\d+(?:[,.]?\d+)?)\s*(?:جنيه|جنية)/i
-            ];
-            
-            for (const pattern of patterns) {
-                const match = smsText.match(pattern);
-                if (match) {
-                    amount = parseFloat(match[1].replace(/,/g, ''));
-                    break;
-                }
-            }
-            
-            if (!amount) {
-                const numbers = smsText.match(/\d+(?:[,.]?\d+)?/g);
-                if (numbers && numbers.length > 0) {
-                    const potential = numbers.filter(n => parseFloat(n) > 5 && parseFloat(n) < 100000);
-                    if (potential.length > 0) amount = parseFloat(potential[0].replace(/,/g, ''));
-                }
-            }
-            
-            if (!amount) return null;
-            
-            // 3. تحديد نوع العملية (استلام أو إرسال/دفع)
-            const receiveKeywords = ['استلام', 'قبض', 'وصل', 'إيداع', 'تم الإضافة', 'تم استلام', 'استلمت', '+'];
-            const sendKeywords = ['تحويل', 'دفع', 'سحب', 'خصم', 'تم الخصم', 'تم التحويل', 'تم الدفع', 'ارسال', '-', 'تم إرسال'];
-            
-            let isReceive = false;
-            for (const kw of receiveKeywords) {
-                if (lowerText.includes(kw.toLowerCase())) { isReceive = true; break; }
-            }
-            if (!isReceive) {
-                for (const kw of sendKeywords) {
-                    if (lowerText.includes(kw.toLowerCase())) { isReceive = false; break; }
-                }
-            }
-            
-            // إذا لم يتم التعرف، نعتمد على وجود كلمة "تحويل"
-            if (lowerText.includes('تحويل') && !lowerText.includes('استلام')) {
-                isReceive = false;
-            }
-            
-            // 4. استخراج اسم المرسل/المستلم إن وجد
-            let senderName = '';
-            const fromMatch = smsText.match(/من\s*([^\d\n]+?)(?:\s*بمبلغ|\s*قيمة|\s*مبلغ|$)/i);
-            const toMatch = smsText.match(/إلى\s*([^\d\n]+?)(?:\s*بمبلغ|\s*قيمة|$)/i);
-            if (fromMatch && isReceive) senderName = fromMatch[1].trim().substring(0, 30);
-            if (toMatch && !isReceive) senderName = toMatch[1].trim().substring(0, 30);
-            
-            // 5. إنشاء وصف مناسب
-            let description = '';
-            if (detectedWallet) {
-                description = isReceive 
-                    ? `استلام ${amount.toLocaleString()} جنيه عبر ${detectedWallet.name}${senderName ? ` من ${senderName}` : ''}`
-                    : `تحويل ${amount.toLocaleString()} جنيه عبر ${detectedWallet.name}${senderName ? ` إلى ${senderName}` : ''}`;
-            } else {
-                description = isReceive 
-                    ? `استلام ${amount.toLocaleString()} جنيه${senderName ? ` من ${senderName}` : ''}`
-                    : `دفع ${amount.toLocaleString()} جنيه${senderName ? ` إلى ${senderName}` : ''}`;
-            }
-            
-            return {
-                amount,
-                type: isReceive ? 'income' : 'expense',
-                wallet: detectedWallet ? detectedWallet.name : (isReceive ? 'تحويل بنكي' : 'مدفوعات'),
-                description: description.substring(0, 60),
-                category: isReceive ? (detectedWallet ? detectedWallet.name : 'تحويل بنكي') : (detectedWallet ? detectedWallet.name : 'مشتريات'),
-                rawText: smsText.substring(0, 100)
-            };
+        // أيقونات SVG
+        const Icons = {
+            Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
+            TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>,
+            TrendingDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>,
+            Moon: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+            Sun: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>,
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+            Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H5.78a1.65 1.65 0 0 0-1.51 1 1.65 1.65 0 0 0 .33 1.82l.04.04A10 10 0 0 0 12 17.66a10 10 0 0 0 6.36-2.62z"/></svg>,
+            Download: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            Printer: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         };
 
         // مكون الإشعار
-        const ToastNotification = ({ message, wallet, onClose }) => {
-            useEffect(() => { const t = setTimeout(onClose, 4500); return () => clearTimeout(t); }, [onClose]);
-            const walletColors = {
-                'InstaPay': 'bg-purple-600',
-                'Vodafone Cash': 'bg-red-600',
-                'Orange Cash': 'bg-orange-600',
-                'Etisalat Cash': 'bg-green-600'
-            };
-            const bgColor = walletColors[wallet] || (message.type === 'income' ? 'bg-green-500' : 'bg-red-500');
+        const ToastNotification = ({ message, type, onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3500);
+                return () => clearTimeout(timer);
+            }, [onClose]);
             
+            const bgColor = type === 'income' ? 'bg-green-500' : type === 'expense' ? 'bg-red-500' : 'bg-indigo-500';
             return (
                 <div className={`toast-notification ${bgColor} text-white rounded-2xl p-4 shadow-2xl flex items-center gap-3`}>
-                    <span className="text-2xl">{message.type === 'income' ? '💰' : '💸'}</span>
-                    <div className="flex-1">
-                        <p className="font-bold text-sm">{message.title}</p>
-                        <p className="text-xs opacity-90">{message.body}</p>
-                        {wallet && <p className="text-[10px] opacity-75 mt-1">📱 {wallet}</p>}
-                    </div>
+                    <span className="text-2xl">{type === 'income' ? '💰' : type === 'expense' ? '💸' : '📄'}</span>
+                    <div className="flex-1"><p className="font-bold text-sm">{message.title}</p><p className="text-xs opacity-90">{message.body}</p></div>
                     <button onClick={onClose} className="text-white/70">✕</button>
+                </div>
+            );
+        };
+
+        // مكون محاكاة الرسائل
+        const SmsSimulator = ({ onAddTransaction, onShowNotification }) => {
+            const [smsText, setSmsText] = useState('');
+            
+            const parseSmsAndAdd = () => {
+                const text = smsText;
+                let amount = null;
+                let isIncome = false;
+                
+                const amountMatch = text.match(/(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:جنيه|EGP|ج\.م|LE)/i);
+                if (amountMatch) amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+                
+                if (text.includes('قبض') || text.includes('استلام') || text.includes('تحويل واصل') || text.includes('إيداع')) isIncome = true;
+                else if (text.includes('صرف') || text.includes('دفع') || text.includes('سحب') || text.includes('خصم')) isIncome = false;
+                
+                if (amount && amount > 0) {
+                    onAddTransaction({
+                        id: Date.now(),
+                        type: isIncome ? 'income' : 'expense',
+                        amount: amount,
+                        desc: text.substring(0, 45),
+                        category: isIncome ? 'تحويل' : 'أخرى',
+                        date: new Date().toISOString().split('T')[0],
+                        time: new Date().toLocaleTimeString('ar-EG'),
+                        auto: true
+                    });
+                    onShowNotification({
+                        title: isIncome ? '💰 استلام مبلغ جديد' : '💸 تم صرف مبلغ',
+                        body: `${amount.toLocaleString()} جنيه`,
+                        type: isIncome ? 'income' : 'expense'
+                    });
+                    setSmsText('');
+                } else {
+                    alert('⚠️ لم يتم التعرف على مبلغ في النص');
+                }
+            };
+            
+            return (
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl p-4 border border-indigo-200">
+                    <h4 className="font-bold text-sm mb-2">📱 لصق رسالة البنك (InstaPay - فودافون كاش)</h4>
+                    <textarea value={smsText} onChange={e => setSmsText(e.target.value)} placeholder="مثال: تم استلام 500 جنيه من InstaPay" className="w-full p-3 rounded-xl border dark:bg-gray-800 text-sm" rows="2"></textarea>
+                    <button onClick={parseSmsAndAdd} className="mt-2 w-full bg-indigo-600 text-white py-2 rounded-xl font-bold text-sm">🤖 تحليل وإضافة تلقائي</button>
                 </div>
             );
         };
@@ -182,11 +176,7 @@
             const [darkMode, setDarkMode] = useState(() => localStorage.getItem('mahfazty_theme') === 'dark');
             const [searchTerm, setSearchTerm] = useState('');
             const [notification, setNotification] = useState(null);
-            const [lastTransaction, setLastTransaction] = useState(null);
-            const [manualAmount, setManualAmount] = useState('');
-            const [manualDesc, setManualDesc] = useState('');
-            const [manualType, setManualType] = useState('expense');
-            const [smsPermission, setSmsPermission] = useState(() => localStorage.getItem('sms_permission') === 'granted');
+            const [manualTrans, setManualTrans] = useState({ type: 'expense', amount: '', desc: '' });
             
             // حفظ البيانات
             useEffect(() => localStorage.setItem('mahfazty_pro_data', JSON.stringify(transactions)), [transactions]);
@@ -196,127 +186,135 @@
                 localStorage.setItem('mahfazty_theme', darkMode ? 'dark' : 'light');
             }, [darkMode]);
             
-            // طلب إذن قراءة الرسائل
-            const requestSmsPermission = useCallback(async () => {
-                if ('sms' in navigator) {
-                    try {
-                        const status = await navigator.sms.requestPermission();
-                        if (status === 'granted') {
-                            setSmsPermission(true);
-                            localStorage.setItem('sms_permission', 'granted');
-                            startSmsListener();
-                        }
-                    } catch (err) {
-                        alert('لم يتم منح الإذن، يمكنك استخدام محاكاة الرسائل للتجربة');
-                    }
-                } else {
-                    alert('المتصفح لا يدعم قراءة الرسائل مباشرة، لكن يمكنك استخدام محاكاة الرسائل');
+            // طلب إذن الإشعارات
+            useEffect(() => {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
                 }
             }, []);
             
-            // بدء الاستماع للرسائل
-            const startSmsListener = useCallback(() => {
-                if ('sms' in navigator && navigator.sms) {
-                    navigator.sms.addEventListener('smsreceived', (event) => {
-                        const sms = event.data;
-                        processWalletSms(sms.body);
+            // إضافة معاملة
+            const addTransaction = useCallback((newTrans) => {
+                setTransactions(prev => [newTrans, ...prev]);
+                setNotification({
+                    title: newTrans.type === 'income' ? '💰 إيداع جديد' : '💸 خصم جديد',
+                    body: `${newTrans.amount.toLocaleString()} جنيه - ${newTrans.desc}`,
+                    type: newTrans.type
+                });
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(newTrans.type === 'income' ? '💰 إيداع' : '💸 خصم', {
+                        body: `${newTrans.amount.toLocaleString()} جنيه`,
+                        icon: 'https://cdn-icons-png.flaticon.com/512/60/60484.png'
                     });
                 }
             }, []);
             
-            // معالجة رسالة المحفظة
-            const processWalletSms = useCallback((smsBody) => {
-                const parsed = parseWalletSms(smsBody);
-                if (parsed && parsed.amount > 0) {
-                    const newTransaction = {
-                        id: Date.now(),
-                        type: parsed.type,
-                        amount: parsed.amount,
-                        desc: parsed.description,
-                        category: parsed.category,
-                        wallet: parsed.wallet,
-                        date: new Date().toISOString().split('T')[0],
-                        time: new Date().toLocaleTimeString('ar-EG'),
-                        auto: true,
-                        source: 'sms'
-                    };
-                    
-                    setTransactions(prev => [newTransaction, ...prev]);
-                    setLastTransaction(newTransaction);
-                    
-                    // إشعار
+            // حذف معاملة مع تأكيد
+            const deleteTransaction = (id, desc, amount) => {
+                if (window.confirm(`⚠️ هل أنت متأكد من حذف المعاملة:\n${desc}\nالمبلغ: ${amount.toLocaleString()} جنيه؟`)) {
+                    setTransactions(prev => prev.filter(t => t.id !== id));
                     setNotification({
-                        title: parsed.type === 'income' ? `💰 استلام ${parsed.amount.toLocaleString()} جنيه` : `💸 تحويل ${parsed.amount.toLocaleString()} جنيه`,
-                        body: parsed.description,
-                        type: parsed.type
-                    }, parsed.wallet);
-                    
-                    // إشعار نظامي
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        new Notification(parsed.type === 'income' ? '💰 استلام أموال' : '💸 تحويل أموال', {
-                            body: `${parsed.amount.toLocaleString()} جنيه عبر ${parsed.wallet}`,
-                            icon: 'https://cdn-icons-png.flaticon.com/512/60/60484.png'
-                        });
-                    }
+                        title: '🗑️ تم الحذف',
+                        body: `تم حذف المعاملة: ${desc}`,
+                        type: 'info'
+                    });
                 }
-            }, []);
-            
-            // محاكاة رسائل المحافظ المختلفة
-            const simulateWalletSms = (walletType) => {
-                const messages = {
-                    instapay: [
-                        "تم استلام 500 جنيه من InstaPay من أحمد علي",
-                        "تم تحويل 250 جنيه عبر InstaPay إلى محمد سعيد",
-                        "استلام 1200 جنيه InstaPay من عميل جديد",
-                        "تم الدفع 350 جنيه InstaPay لمطعم كشرى"
-                    ],
-                    vodafone: [
-                        "تم الدفع بنجاح 150 جنيه Vodafone Cash لمحل ملابس",
-                        "استلام 1000 جنيه Vodafone Cash من شركة",
-                        "تم تحويل 300 جنيه Vodafone Cash إلى رقم 010xxxxxxx",
-                        "تم شحن المحفظة بمبلغ 200 جنيه Vodafone Cash"
-                    ],
-                    orange: [
-                        "تم استلام 750 جنيه Orange Cash من هبة محمد",
-                        "تم تحويل 180 جنيه Orange Cash إلى محفظة أورنج",
-                        "Orange Money: استلام 2000 جنيه من تحويل",
-                        "تم دفع 95 جنيه Orange Cash لفاتورة الكهرباء"
-                    ],
-                    etisalat: [
-                        "تم شحن محفظة اتصالات بمبلغ 500 جنيه",
-                        "We Cash: استلام 350 جنيه من تحويل",
-                        "تم دفع 120 جنيه We Cash فاتورة موبايل",
-                        "استلام 800 جنيه Etisalat Cash من تحويل"
-                    ]
-                };
-                
-                const msgList = messages[walletType];
-                const randomMsg = msgList[Math.floor(Math.random() * msgList.length)];
-                processWalletSms(randomMsg);
             };
             
-            // إضافة معاملة يدوية
-            const addManualTransaction = () => {
-                if (!manualAmount || !manualDesc) return;
-                const newTrans = {
+            // إضافة يدوية
+            const handleManualAdd = () => {
+                if (!manualTrans.amount || !manualTrans.desc) return;
+                addTransaction({
                     id: Date.now(),
-                    type: manualType,
-                    amount: parseFloat(manualAmount),
-                    desc: manualDesc,
-                    category: manualType === 'income' ? 'تحويل يدوي' : 'مشتريات',
-                    wallet: 'يدوي',
+                    type: manualTrans.type,
+                    amount: parseFloat(manualTrans.amount),
+                    desc: manualTrans.desc,
+                    category: manualTrans.type === 'income' ? 'تحويل' : 'أخرى',
                     date: new Date().toISOString().split('T')[0],
                     time: new Date().toLocaleTimeString('ar-EG'),
                     auto: false
-                };
-                setTransactions(prev => [newTrans, ...prev]);
-                setManualAmount('');
-                setManualDesc('');
-                setNotification({
-                    title: manualType === 'income' ? '💰 إضافة دخل' : '💸 إضافة مصروف',
-                    body: `${parseFloat(manualAmount).toLocaleString()} جنيه - ${manualDesc}`,
-                    type: manualType
                 });
+                setManualTrans({ type: manualTrans.type, amount: '', desc: '' });
+            };
+            
+            // تصدير PDF
+            const exportToPDF = async () => {
+                const stats = {
+                    income: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0),
+                    expense: transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0),
+                    balance: transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0) - 
+                              transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0)
+                };
+                
+                // إنشاء عنصر HTML للتقرير
+                const reportDiv = document.createElement('div');
+                reportDiv.className = 'pdf-report-container';
+                reportDiv.innerHTML = `
+                    <div class="pdf-report-header">
+                        <h1 style="color: #4f46e5; margin:0;">📊 محفظتي برو</h1>
+                        <h3>تقرير المعاملات المالية</h3>
+                        <p>تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}</p>
+                    </div>
+                    <div class="pdf-stats">
+                        <div><strong>💰 الرصيد</strong><br>${stats.balance.toLocaleString()} ج.م</div>
+                        <div><strong>📈 إجمالي الدخل</strong><br>+${stats.income.toLocaleString()} ج.م</div>
+                        <div><strong>📉 إجمالي المصروفات</strong><br>-${stats.expense.toLocaleString()} ج.م</div>
+                        <div><strong>📋 عدد المعاملات</strong><br>${transactions.length}</div>
+                    </div>
+                    <table class="pdf-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>التاريخ</th>
+                                <th>الوصف</th>
+                                <th>النوع</th>
+                                <th>المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transactions.slice(0, 50).map((t, i) => `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${t.date}</td>
+                                    <td>${t.desc}</td>
+                                    <td>${t.type === 'income' ? '💰 دخل' : '💸 مصروف'}</td>
+                                    <td style="color: ${t.type === 'income' ? 'green' : 'red'}">${t.type === 'income' ? '+' : '-'}${t.amount.toLocaleString()} ج.م</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #666;">
+                        تم إنشاء هذا التقرير بواسطة محفظتي برو - إدارة مالية ذكية
+                    </div>
+                `;
+                
+                document.body.appendChild(reportDiv);
+                
+                try {
+                    const canvas = await html2canvas(reportDiv, { scale: 2, backgroundColor: '#ffffff' });
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const imgWidth = 190;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+                    pdf.save(`تقرير_محفظتي_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    
+                    setNotification({
+                        title: '📄 تم التصدير',
+                        body: 'تم حفظ التقرير بنجاح كملف PDF',
+                        type: 'info'
+                    });
+                } catch (error) {
+                    console.error('PDF error:', error);
+                    alert('حدث خطأ في إنشاء PDF، يمكنك استخدام طباعة الصفحة');
+                } finally {
+                    document.body.removeChild(reportDiv);
+                }
+            };
+            
+            // طباعة التقرير
+            const printReport = () => {
+                window.print();
             };
             
             // إحصائيات
@@ -326,28 +324,9 @@
                 return { income, expense, balance: income - expense };
             }, [transactions]);
             
-            // إحصائيات حسب المحفظة
-            const walletStats = useMemo(() => {
-                const stats = {};
-                transactions.forEach(t => {
-                    const wallet = t.wallet || 'أخرى';
-                    if (!stats[wallet]) stats[wallet] = { income: 0, expense: 0 };
-                    if (t.type === 'income') stats[wallet].income += t.amount;
-                    else stats[wallet].expense += t.amount;
-                });
-                return stats;
-            }, [transactions]);
-            
-            // طلب إذن الإشعارات
-            useEffect(() => {
-                if ('Notification' in window && Notification.permission === 'default') {
-                    Notification.requestPermission();
-                }
-            }, []);
-            
             return (
                 <div className="min-h-screen pb-24">
-                    {notification && <ToastNotification message={notification} wallet={notification.wallet} onClose={() => setNotification(null)} />}
+                    {notification && <ToastNotification message={notification} type={notification.type} onClose={() => setNotification(null)} />}
                     
                     {/* Header */}
                     <nav className="fixed w-full z-20 top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b shadow-sm">
@@ -355,122 +334,98 @@
                             <div className="flex items-center gap-2">
                                 <img src="https://cdn-icons-png.flaticon.com/512/8552/8552791.png" className="w-8 h-8" alt="logo" />
                                 <span className="font-black text-xl bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">محفظتي برو</span>
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">InstaPay ✓</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                {!smsPermission && (
-                                    <button onClick={requestSmsPermission} className="bg-indigo-600 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                                        📱 فعّل القراءة
-                                    </button>
-                                )}
+                                {/* أزرار التصدير */}
+                                <button onClick={exportToPDF} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-red-600" title="تصدير PDF">
+                                    <Icons.Download />
+                                </button>
+                                <button onClick={printReport} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-blue-600" title="طباعة">
+                                    <Icons.Printer />
+                                </button>
                                 <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-gray-100">
-                                    {darkMode ? '☀️' : '🌙'}
+                                    {darkMode ? <Icons.Sun /> : <Icons.Moon />}
                                 </button>
                             </div>
                         </div>
                     </nav>
                     
-                    <main className="pt-20 px-4 max-w-6xl mx-auto space-y-5">
-                        {/* بطاقات الرصيد */}
+                    <main className="pt-20 px-4 max-w-6xl mx-auto space-y-4">
+                        {/* بطاقات الإحصائيات */}
                         <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                            <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white">
                                 <p className="text-xs opacity-80">الرصيد</p>
                                 <p className="text-2xl font-bold" dir="ltr">{stats.balance.toLocaleString()} <span className="text-xs">ج.م</span></p>
                             </div>
                             <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-green-500">
                                 <p className="text-xs text-green-600">الدخل</p>
-                                <p className="text-xl font-bold text-green-600" dir="ltr">+{stats.income.toLocaleString()}</p>
+                                <p className="text-xl font-bold text-green-600">+{stats.income.toLocaleString()}</p>
                             </div>
                             <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow border-r-4 border-red-500">
                                 <p className="text-xs text-red-500">المصروفات</p>
-                                <p className="text-xl font-bold text-red-500" dir="ltr">-{stats.expense.toLocaleString()}</p>
+                                <p className="text-xl font-bold text-red-500">-{stats.expense.toLocaleString()}</p>
                             </div>
                         </div>
                         
-                        {/* أزرار محاكاة المحافظ */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 no-print">
-                            <button onClick={() => simulateWalletSms('instapay')} className="instapay-bg text-white py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1">💜 InstaPay</button>
-                            <button onClick={() => simulateWalletSms('vodafone')} className="vodafone-bg text-white py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1">🔴 Vodafone Cash</button>
-                            <button onClick={() => simulateWalletSms('orange')} className="orange-bg text-white py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1">🟠 Orange Cash</button>
-                            <button onClick={() => simulateWalletSms('etisalat')} className="etisalat-bg text-white py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1">🟢 Etisalat/We</button>
-                        </div>
+                        {/* محاكاة الرسائل */}
+                        <SmsSimulator onAddTransaction={addTransaction} onShowNotification={(n) => setNotification(n)} />
                         
                         {/* إضافة يدوية */}
                         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
                             <h3 className="font-bold mb-3">✏️ إضافة معاملة يدوية</h3>
                             <div className="flex gap-2 mb-3">
-                                <button onClick={() => setManualType('expense')} className={`flex-1 py-2 rounded-xl font-bold ${manualType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>مصروف</button>
-                                <button onClick={() => setManualType('income')} className={`flex-1 py-2 rounded-xl font-bold ${manualType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>دخل</button>
+                                <button onClick={() => setManualTrans({...manualTrans, type: 'expense'})} className={`flex-1 py-2 rounded-xl font-bold ${manualTrans.type === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-100'}`}>مصروف</button>
+                                <button onClick={() => setManualTrans({...manualTrans, type: 'income'})} className={`flex-1 py-2 rounded-xl font-bold ${manualTrans.type === 'income' ? 'bg-green-500 text-white' : 'bg-gray-100'}`}>دخل</button>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <input type="number" placeholder="المبلغ" value={manualAmount} onChange={e => setManualAmount(e.target.value)} className="p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0" />
-                                <input type="text" placeholder="الوصف" value={manualDesc} onChange={e => setManualDesc(e.target.value)} className="p-2 rounded-xl bg-gray-50 dark:bg-gray-700 border-0" />
+                                <input type="number" placeholder="المبلغ" value={manualTrans.amount} onChange={e => setManualTrans({...manualTrans, amount: e.target.value})} className="p-2 rounded-xl bg-gray-50 border-0" />
+                                <input type="text" placeholder="الوصف" value={manualTrans.desc} onChange={e => setManualTrans({...manualTrans, desc: e.target.value})} className="p-2 rounded-xl bg-gray-50 border-0" />
                             </div>
-                            <button onClick={addManualTransaction} className="w-full mt-3 bg-indigo-600 text-white py-2 rounded-xl font-bold">حفظ</button>
+                            <button onClick={handleManualAdd} className="w-full mt-3 bg-indigo-600 text-white py-2 rounded-xl font-bold">حفظ المعاملة</button>
                         </div>
                         
-                        {/* إحصائيات المحافظ */}
-                        {Object.keys(walletStats).length > 0 && (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm">
-                                <h3 className="font-bold text-sm mb-2">📊 ملخص المحافظ</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {Object.entries(walletStats).map(([wallet, data]) => (
-                                        <div key={wallet} className="bg-gray-100 dark:bg-gray-700 rounded-xl p-2 text-center min-w-[80px]">
-                                            <p className="text-xs font-bold">{wallet}</p>
-                                            <p className="text-green-600 text-xs">+{data.income.toLocaleString()}</p>
-                                            <p className="text-red-500 text-xs">-{data.expense.toLocaleString()}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* آخر المعاملات */}
+                        {/* قائمة المعاملات مع زر حذف */}
                         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm">
-                            <h3 className="font-bold mb-3">📋 آخر المعاملات</h3>
+                            <h3 className="font-bold mb-3 flex items-center gap-2">📋 المعاملات <span className="text-sm text-gray-500">({transactions.length})</span></h3>
                             <div className="relative mb-3">
-                                <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-full py-2 pr-4 pl-4 text-sm" />
+                                <Icons.Search />
+                                <input type="text" placeholder="بحث..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-gray-50 rounded-full py-2 pr-10 pl-4 text-sm" />
                             </div>
-                            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                                {transactions.filter(t => t.desc.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 15).map(t => {
-                                    let walletColor = '';
-                                    if (t.wallet === 'InstaPay') walletColor = 'text-purple-600 bg-purple-100';
-                                    else if (t.wallet === 'Vodafone Cash') walletColor = 'text-red-600 bg-red-100';
-                                    else if (t.wallet === 'Orange Cash') walletColor = 'text-orange-600 bg-orange-100';
-                                    else if (t.wallet === 'Etisalat Cash') walletColor = 'text-green-600 bg-green-100';
-                                    else walletColor = 'text-gray-500 bg-gray-100';
-                                    
-                                    return (
-                                        <div key={t.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                                            <div className="flex-1">
-                                                <p className="font-medium text-sm">{t.desc}</p>
-                                                <div className="flex gap-2 mt-1">
-                                                    <p className="text-[10px] text-gray-400">{t.date} {t.time}</p>
-                                                    {t.wallet && t.wallet !== 'يدوي' && (
-                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${walletColor}`}>{t.wallet}</span>
-                                                    )}
-                                                    {t.auto && <span className="text-[9px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">تلقائي</span>}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
-                                                    {t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString()}
-                                                </span>
-                                                <button onClick={() => setTransactions(prev => prev.filter(x => x.id !== t.id))} className="text-gray-400 hover:text-red-500">🗑️</button>
-                                            </div>
+                            <div className="space-y-2 max-h-[450px] overflow-y-auto">
+                                {transactions.filter(t => t.desc.toLowerCase().includes(searchTerm.toLowerCase())).map(t => (
+                                    <div key={t.id} className="transaction-item flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:shadow transition">
+                                        <div className="flex-1">
+                                            <p className="font-medium text-sm">{t.desc}</p>
+                                            <p className="text-[10px] text-gray-400">{t.date} {t.time}</p>
                                         </div>
-                                    );
-                                })}
-                                {transactions.length === 0 && <p className="text-center text-gray-400 py-8">لا توجد معاملات. جرب الضغط على أيقونة المحفظة لتجربة المحاكاة</p>}
+                                        <div className="flex items-center gap-3">
+                                            <span className={`font-bold ${t.type === 'income' ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
+                                                {t.type === 'income' ? '+' : '-'}{t.amount.toLocaleString()}
+                                            </span>
+                                            {t.auto && <span className="text-[9px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">تلقائي</span>}
+                                            <button 
+                                                onClick={() => deleteTransaction(t.id, t.desc, t.amount)}
+                                                className="text-gray-400 hover:text-red-500 transition p-1"
+                                                title="حذف المعاملة"
+                                            >
+                                                <Icons.Trash />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {transactions.length === 0 && (
+                                    <div className="text-center py-10 text-gray-400">
+                                        <p>📭 لا توجد معاملات</p>
+                                        <p className="text-xs mt-1">جرب إضافة رسالة من InstaPay أو Vodafone Cash</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         
-                        {/* آخر معاملة مسجلة */}
-                        {lastTransaction && (
-                            <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-3 text-sm">
-                                <p className="font-bold">📱 آخر معاملة مسجلة تلقائياً:</p>
-                                <p className="text-indigo-700 dark:text-indigo-300">{lastTransaction.desc}</p>
-                                <p className="text-xs text-gray-500 mt-1">{lastTransaction.date} - {lastTransaction.wallet}</p>
+                        {/* ملخص سريع */}
+                        {transactions.length > 0 && (
+                            <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-3 text-center text-sm">
+                                📊 إجمالي {transactions.length} معاملة | آخر تحديث: {transactions[0]?.date || 'لا توجد معاملات'}
                             </div>
                         )}
                     </main>
